@@ -149,6 +149,35 @@ $criticalCount   = $analytics['critical'];
 <?php include __DIR__ . '/../assets/modals/addMedicine.php'; ?>
 <?php include __DIR__ . '/../assets/modals/editMedicine.php'; ?>
 <?php include __DIR__ . '/../assets/modals/restockMedicine.php'; ?>
+
+<!-- Delete Confirmation Modal -->
+<div class="eh-modal" id="deleteMedicineModal" role="dialog" aria-modal="true" aria-label="Delete Medicine Confirmation">
+    <div class="eh-panel">
+        <div class="eh-head">
+            <div class="eh-head-text">
+                <h3>Delete Medicine</h3>
+            </div>
+            <button class="eh-close" type="button" data-close-modal aria-label="Close modal">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l10 10M13 3L3 13"/></svg>
+            </button>
+        </div>
+        <div class="eh-body" style="display:flex; align-items:flex-start; gap:14px;">
+            <div style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:14px; background:rgba(254,226,226,.8); flex-shrink:0;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:24px; height:24px; color:#dc2626;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <p id="deleteConfirmMessage" style="margin:0; font-size:14px; line-height:1.6; color:var(--text-primary);">Are you sure you want to delete this medicine? This action cannot be undone.</p>
+        </div>
+        <div class="eh-foot">
+            <button class="module-btn secondary" type="button" data-close-modal>Cancel</button>
+            <button class="module-btn" type="button" id="confirmDeleteBtn" style="background:#dc2626; color:#fff;">Delete</button>
+        </div>
+    </div>
+</div>
+
 <?php include __DIR__ . '/../assets/popups/logout.php'; ?>
 
 <script>
@@ -316,38 +345,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // ═══════════════════════════════════════
     //  DELETE MEDICINE
     // ═══════════════════════════════════════
+    let currentDeleteBtn = null;
+
     document.querySelectorAll('[data-action="delete"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const name = btn.dataset.name;
-            
-            // Show custom confirmation
-            showConfirmModal(`Are you sure you want to delete "${name}"?\n\nThis action cannot be undone.`, async () => {
-                btn.disabled = true;
-                btn.textContent = '…';
+        btn.addEventListener('click', function(e) {
+            const name = this.dataset.name;
+            document.getElementById('deleteConfirmMessage').textContent = `Are you sure you want to delete "${name}"? This action cannot be undone.`;
+            currentDeleteBtn = this;
+            openModal('deleteMedicineModal');
+        });
+    });
 
-            try {
-                const formData = new FormData();
-                formData.append('medId', btn.dataset.id);
-                const result = await postAction('../actions/deleteMedicine.php', formData);
+    document.getElementById('confirmDeleteBtn')?.addEventListener('click', async function() {
+        if (!currentDeleteBtn) return;
 
-                if (result.success) {
-                    // Animate row removal
-                    const row = btn.closest('tr');
-                    row.style.transition = 'opacity 0.3s, transform 0.3s';
-                    row.style.opacity = '0';
-                    row.style.transform = 'translateX(20px)';
-                    setTimeout(() => { row.remove(); updateVisibleCount(); }, 300);
-                } else {
-                    alert(result.message);
-                    btn.disabled = false;
-                    btn.textContent = 'Delete';
-                }
-            } catch (err) {
-                alert('Network error. Please try again.');
+        const btn = currentDeleteBtn;
+        const name = btn.dataset.name;
+
+        closeAllModals();
+        btn.disabled = true;
+        btn.textContent = 'Deleting…';
+
+        try {
+            const formData = new FormData();
+            formData.append('medId', btn.dataset.id);
+            const result = await postAction('../actions/deleteMedicine.php', formData);
+
+            if (result.success) {
+                const row = btn.closest('tr');
+                row.style.transition = 'opacity 0.3s, transform 0.3s';
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(20px)';
+                setTimeout(() => { row.remove(); updateVisibleCount(); }, 300);
+            } else {
+                alert(result.message || 'Failed to delete the medicine.');
                 btn.disabled = false;
                 btn.textContent = 'Delete';
             }
-        });
+        } catch (err) {
+            alert('Network error. Please try again.');
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+        } finally {
+            currentDeleteBtn = null;
+        }
     });
 
     // ═══════════════════════════════════════
@@ -463,38 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPagination();
         }
         highlightElement(targetRow);
-    }
-
-    function showConfirmModal(message, callback) {
-        const overlay = document.createElement('div');
-        overlay.className = 'settings-modal-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.3s ease;';
-        const modal = document.createElement('div');
-        modal.className = 'settings-popup confirm';
-        modal.style.cssText = 'background:white;width:100%;max-width:340px;padding:32px;border-radius:24px;text-align:center;transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);box-shadow:0 20px 50px rgba(0,0,0,0.2);';
-        modal.innerHTML = '<div style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;font-weight:bold;background:#eff6ff;color:#4f46e5;">?</div><h3 style="margin-bottom:8px;font-size:20px;color:#111827;">Confirm</h3><p style="color:#6b7280;font-size:14px;margin-bottom:24px;line-height:1.5;">' + message + '</p><div style="display:flex;gap:10px;justify-content:center;"><button class="popup-cancel-btn" style="padding:12px 24px;border-radius:12px;border:none;background:#6b7280;color:white;font-weight:600;cursor:pointer;">Cancel</button><button class="popup-confirm-btn" style="padding:12px 24px;border-radius:12px;border:none;background:#4f46e5;color:white;font-weight:600;cursor:pointer;">Confirm</button></div>';
-        document.body.appendChild(overlay);
-        overlay.appendChild(modal);
-        setTimeout(() => overlay.style.opacity = '1', 10);
-        setTimeout(() => overlay.style.pointerEvents = 'auto', 10);
-        setTimeout(() => modal.style.transform = 'scale(1)', 10);
-
-        overlay.querySelector('.popup-cancel-btn').onclick = () => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            modal.style.transform = 'scale(0.9)';
-            setTimeout(() => overlay.remove(), 300);
-        };
-
-        overlay.querySelector('.popup-confirm-btn').onclick = () => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            modal.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                overlay.remove();
-                callback();
-            }, 300);
-        };
     }
 
     setTimeout(highlightFromQuery, 80);

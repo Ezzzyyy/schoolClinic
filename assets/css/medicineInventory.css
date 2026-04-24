@@ -259,6 +259,38 @@
     grid-template-columns: 1fr;
   }
 
+/* Delete Confirmation Modal Styles */
+#deleteMedicineModal .eh-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+}
+
+#deleteMedicineModal #deleteConfirmMessage {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+#deleteMedicineModal .eh-foot {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+#deleteMedicineModal .eh-panel {
+  width: min(520px, 100%);
+  max-width: 520px;
+}
+
+#deleteMedicineModal .eh-foot .module-btn {
+  min-width: 80px;
+}
+
   .module-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -363,24 +363,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ═══ Release Certificate ═══
     document.querySelectorAll('[data-action="release"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const student = btn.dataset.student;
-            
-            showConfirmModal(`Release certificate for ${student}?\n\nThis will move it to the Cleared Students list.`, async () => {
-                btn.disabled = true;
-                btn.textContent = 'Releasing…';
+        btn.addEventListener('click', async function() {
+            const student = this.dataset.student;
+
+            const confirmed = confirm(`Release certificate for ${student}?\n\nThis will move it to the Cleared Students list.`);
+            if (!confirmed) return;
+
+            this.disabled = true;
+            this.textContent = 'Releasing…';
 
             try {
                 const formData = new FormData();
-                formData.append('certId', btn.dataset.certId);
+                formData.append('certId', this.dataset.certId);
                 const result = await postAction('../actions/releaseCertificate.php', formData);
 
                 if (result.success) {
-                    const row = btn.closest('tr');
+                    const row = this.closest('tr');
                     row.style.transition = 'opacity 0.3s, transform 0.3s';
                     row.style.opacity = '0';
                     row.style.transform = 'translateX(20px)';
-                    setTimeout(() => { 
+                    setTimeout(() => {
                         row.remove();
                         // Update KPIs if returned
                         if (result.stats) {
@@ -395,13 +397,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 300);
                 } else {
                     alert(result.message);
-                    btn.disabled = false;
-                    btn.textContent = 'Release';
+                    this.disabled = false;
+                    this.textContent = 'Release';
                 }
             } catch (err) {
                 alert('Network error. Please try again.');
-                btn.disabled = false;
-                btn.textContent = 'Release';
+                this.disabled = false;
+                this.textContent = 'Release';
             }
         });
     });
@@ -453,60 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if(e.key === 'Escape') document.querySelectorAll('.eh-modal').forEach(m => m.classList.remove('is-open'));
     });
 
-    function showConfirmModal(message, callback) {
-        const overlay = document.createElement('div');
-        overlay.className = 'settings-modal-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.3s ease;';
-        const modal = document.createElement('div');
-        modal.className = 'settings-popup confirm';
-        modal.style.cssText = 'background:white;width:100%;max-width:340px;padding:32px;border-radius:24px;text-align:center;transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);box-shadow:0 20px 50px rgba(0,0,0,0.2);';
-        modal.innerHTML = '<div style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;font-weight:bold;background:#eff6ff;color:#4f46e5;">?</div><h3 style="margin-bottom:8px;font-size:20px;color:#111827;">Confirm</h3><p style="color:#6b7280;font-size:14px;margin-bottom:24px;line-height:1.5;">' + message + '</p><div style="display:flex;gap:10px;justify-content:center;"><button class="popup-cancel-btn" style="padding:12px 24px;border-radius:12px;border:none;background:#6b7280;color:white;font-weight:600;cursor:pointer;">Cancel</button><button class="popup-confirm-btn" style="padding:12px 24px;border-radius:12px;border:none;background:#4f46e5;color:white;font-weight:600;cursor:pointer;">Confirm</button></div>';
-        document.body.appendChild(overlay);
-        overlay.appendChild(modal);
-        setTimeout(() => overlay.style.opacity = '1', 10);
-        setTimeout(() => overlay.style.pointerEvents = 'auto', 10);
-        setTimeout(() => modal.style.transform = 'scale(1)', 10);
-
-        overlay.querySelector('.popup-cancel-btn').onclick = () => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            modal.style.transform = 'scale(0.9)';
-            setTimeout(() => overlay.remove(), 300);
-        };
-
-        overlay.querySelector('.popup-confirm-btn').onclick = () => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            modal.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                overlay.remove();
-                callback();
-            }, 300);
-        };
-    }
-
-    function showAlert(message) {
-        const overlay = document.createElement('div');
-        overlay.className = 'settings-modal-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.3s ease;';
-        const modal = document.createElement('div');
-        modal.className = 'settings-popup error';
-        modal.style.cssText = 'background:white;width:100%;max-width:340px;padding:32px;border-radius:24px;text-align:center;transform:scale(0.9);transition:transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);box-shadow:0 20px 50px rgba(0,0,0,0.2);';
-        modal.innerHTML = '<div style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;font-weight:bold;background:#fef2f2;color:#ef4444;">⚠</div><h3 style="margin-bottom:8px;font-size:20px;color:#111827;">Error</h3><p style="color:#6b7280;font-size:14px;margin-bottom:24px;line-height:1.5;">' + message + '</p><button class="popup-close-btn" style="width:100%;padding:12px;border-radius:12px;border:none;background:#1f2937;color:white;font-weight:600;cursor:pointer;">Dismiss</button>';
-        document.body.appendChild(overlay);
-        overlay.appendChild(modal);
-        setTimeout(() => overlay.style.opacity = '1', 10);
-        setTimeout(() => overlay.style.pointerEvents = 'auto', 10);
-        setTimeout(() => modal.style.transform = 'scale(1)', 10);
-
-        modal.querySelector('.popup-close-btn').onclick = () => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-            modal.style.transform = 'scale(0.9)';
-            setTimeout(() => overlay.remove(), 300);
-        };
-    }
+    setTimeout(highlightFromQuery, 80);
 });
+
 </script>
 <script src="../assets/js/popup.js" defer></script>
 <script src="../assets/js/notifications.js" defer></script>

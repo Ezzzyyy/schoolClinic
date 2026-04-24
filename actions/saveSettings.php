@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
-error_reporting(0);
-header('Content-Type: application/json');
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -13,6 +13,11 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../classes/Settings.php';
 
 protectPage(1);
+
+// Only set JSON header for specific form types that return JSON
+if (in_array($_POST['form_type'] ?? '', ['test_email', 'manual_backup', 'clear_old_logs'])) {
+    header('Content-Type: application/json');
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
@@ -108,21 +113,19 @@ if ($formType === 'clinic_setup') {
     }
 } elseif ($formType === 'test_email') {
     // Test email configuration with Gmail defaults
-    header('Content-Type: application/json');
-    
     $host = 'smtp.gmail.com';
     $port = 587;
     $username = $_POST['email_username'] ?? '';
     $password = $_POST['email_password'] ?? '';
-    
+
     if (empty($username) || empty($password)) {
         echo json_encode(['success' => false, 'message' => 'Email credentials are incomplete.']);
         exit;
     }
-    
+
     // Test SMTP connection
     $connection = @fsockopen($host, $port, $errno, $errstr, 5);
-    
+
     if ($connection) {
         fclose($connection);
         echo json_encode(['success' => true, 'message' => 'Gmail SMTP connection successful!']);
@@ -136,38 +139,75 @@ if ($formType === 'clinic_setup') {
         'backup_enabled'      => isset($_POST['backup_enabled']) ? '1' : '0'
     ];
 } elseif ($formType === 'manual_backup') {
-    // Create manual backup
-    header('Content-Type: application/json');
+    // Create manual backup using PHP
+    ob_clean();
+    ob_start();
     
     $backupDir = __DIR__ . '/../uploads/backups/';
     if (!is_dir($backupDir)) {
         mkdir($backupDir, 0777, true);
     }
-    
+
     $backupFile = $backupDir . 'backup_' . date('Y-m-d_His') . '.sql';
-    $dbName = 'school_clinic_db';
-    $dbUser = 'root';
-    $dbPass = '';
-    $dbHost = 'localhost';
-    
-    $command = "mysqldump -h {$dbHost} -u {$dbUser}" . (!empty($dbPass) ? " -p{$dbPass}" : "") . " {$dbName} > {$backupFile}";
-    
-    $output = null;
-    $returnVar = null;
-    exec($command, $output, $returnVar);
-    
-    if ($returnVar === 0 && file_exists($backupFile)) {
+
+    // Increase execution time and memory limit
+    set_time_limit(300);
+    ini_set('memory_limit', '256M');
+
+    try {
+        // Get all tables
+        $tables = [];
+        $result = $conn->query("SHOW TABLES");
+        if (!$result) {
+            throw new Exception('Failed to get tables');
+        }
+        while ($row = $result->fetch(PDO::FETCH_NUM)) {
+            $tables[] = $row[0];
+        }
+
+        $sql = '';
+        foreach ($tables as $table) {
+            // Get CREATE TABLE statement
+            $result = $conn->query("SHOW CREATE TABLE {$table}");
+            if (!$result) {
+                throw new Exception("Failed to get CREATE TABLE for {$table}");
+            }
+            $row = $result->fetch(PDO::FETCH_ASSOC);
+            $sql .= "\n\n" . $row['Create Table'] . ";\n\n";
+
+            // Get table data
+            $result = $conn->query("SELECT * FROM {$table}");
+            if (!$result) {
+                throw new Exception("Failed to select from {$table}");
+            }
+
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                $sql .= "INSERT INTO {$table} VALUES (";
+                $values = [];
+                foreach ($row as $value) {
+                    $values[] = $value === null ? 'NULL' : "'" . addslashes($value) . "'";
+                }
+                $sql .= implode(', ', $values) . ");\n";
+            }
+        }
+
+        $written = file_put_contents($backupFile, $sql);
+        if ($written === false) {
+            throw new Exception('Failed to write backup file');
+        }
+
         // Update last backup date
         $settingsModel->saveMultiple(['last_backup_date' => date('Y-m-d H:i:s')]);
+        
+        ob_end_clean();
         echo json_encode(['success' => true, 'message' => 'Backup created successfully!']);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to create backup. Make sure mysqldump is installed.']);
+    } catch (Exception $e) {
+        ob_end_clean();
+        echo json_encode(['success' => false, 'message' => 'Backup failed: ' . $e->getMessage()]);
     }
     exit;
 } elseif ($formType === 'clear_old_logs') {
     // Clear audit logs older than 90 days
-    header('Content-Type: application/json');
-
     $query = "DELETE FROM audit_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)";
 
     if ($conn->query($query)) {

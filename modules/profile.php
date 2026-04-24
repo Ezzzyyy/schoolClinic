@@ -106,7 +106,7 @@ unset($_SESSION['profile_msg'], $_SESSION['profile_msg_type']);
                                         <circle cx="8" cy="7" r="2"/>
                                     </svg>
                                 </div>
-                                <span class="p-stat-val">1,248</span>
+                                <span class="p-stat-val" id="statVisits">0</span>
                                 <span class="p-stat-lbl">Visits</span>
                             </div>
                             <div class="p-stat-item">
@@ -116,7 +116,7 @@ unset($_SESSION['profile_msg'], $_SESSION['profile_msg_type']);
                                         <path d="M6 5h4M6 8h4M6 11h2"/>
                                     </svg>
                                 </div>
-                                <span class="p-stat-val">34</span>
+                                <span class="p-stat-val" id="statReports">0</span>
                                 <span class="p-stat-lbl">Reports</span>
                             </div>
                         </div>
@@ -346,7 +346,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const qrImage = document.getElementById('profileQrImage');
     const downloadQrFileBtn = document.getElementById('downloadQrFileBtn');
     const activityLogList = document.getElementById('activityLogList');
+    const statVisits = document.getElementById('statVisits');
+    const statReports = document.getElementById('statReports');
     const profileQrData = <?= $profileQrData ?>;
+
+    // Load profile statistics
+    async function loadProfileStats() {
+        try {
+            const response = await fetch('../actions/getProfileStats.php');
+            const data = await response.json();
+            if (data.success) {
+                if (statVisits) statVisits.textContent = data.visits.toLocaleString();
+                if (statReports) statReports.textContent = data.reports.toLocaleString();
+            }
+        } catch (err) {
+            console.error('Failed to load profile stats:', err);
+        }
+    }
+    loadProfileStats();
 
     function openProfileModal(modal) {
         if (!modal) return;

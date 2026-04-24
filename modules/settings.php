@@ -114,6 +114,11 @@ $activeModule = 'settings';
       if (tabId === 'users') {
           loadUsers();
       }
+
+      // Load system stats when system tab is clicked
+      if (tabId === 'system') {
+          loadSystemStats();
+      }
   }
 
   function loadUsers() {
@@ -155,6 +160,21 @@ $activeModule = 'settings';
       })
       .catch(error => {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 28px; color: #ef4444;">Error loading users. Please try again.</td></tr>';
+      });
+  }
+
+  function loadSystemStats() {
+      fetch('../actions/getSystemStats.php')
+      .then(response => response.json())
+      .then(data => {
+          if (!data.success) return;
+
+          var el = function(id) { return document.getElementById(id); };
+          if (el('sysLastBackup')) el('sysLastBackup').textContent = data.last_backup || 'Never';
+          if (el('sysAppVersion')) el('sysAppVersion').textContent = data.app_version || 'ClinIQ v1.0.0';
+      })
+      .catch(error => {
+          console.error('Failed to load system stats:', error);
       });
   }
   </script>
@@ -390,9 +410,9 @@ $activeModule = 'settings';
           <section class="card settings-card">
             <div class="card-header"><div class="card-title">Database &amp; Backup</div></div>
             <div class="sys-info-list">
-              <div class="sys-info-row"><span>Last Backup</span><strong><?= e($config['last_backup_date'] ?? 'Never') ?></strong></div>
+              <div class="sys-info-row"><span>Last Backup</span><strong id="sysLastBackup"><?= e($config['last_backup_date'] ?? 'Never') ?></strong></div>
               <div class="sys-info-row"><span>Data Retention Period</span><strong><?= e($config['data_retention_days'] ?? '365') ?> days</strong></div>
-              <div class="sys-info-row"><span>App Version</span><strong>ClinIQ v1.0.0</strong></div>
+              <div class="sys-info-row"><span>App Version</span><strong id="sysAppVersion">ClinIQ v1.0.0</strong></div>
             </div>
             <div class="settings-form-grid">
               <label class="sf-field full"><span>Auto Backup</span>
@@ -494,11 +514,7 @@ function triggerManualBackup(button) {
     showPopup('Create a database backup now? This may take a moment.', 'confirm', () => {
         button.disabled = true;
         button.textContent = 'Creating backup...';
-        fetch('../actions/saveSettings.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'form_type=manual_backup'
-        })
+        fetch('../actions/createBackup.php')
         .then(response => response.json())
         .then(data => {
             button.disabled = false;
