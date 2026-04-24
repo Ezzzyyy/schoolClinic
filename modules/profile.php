@@ -58,6 +58,7 @@ unset($_SESSION['profile_msg'], $_SESSION['profile_msg_type']);
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
     <link rel="stylesheet" href="../assets/css/profile.css" />
     <link rel="stylesheet" href="../assets/css/modal.css" />
+    <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 <div class="app-shell">
@@ -475,5 +476,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+<script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>

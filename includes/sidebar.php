@@ -26,11 +26,19 @@ if (!function_exists('navActive')) {
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="5.5" r="2.8"/><path d="M2.5 13.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
 			Student Records
 		</a>
+		<a href="enrollment.php" class="nav-item<?= navActive('enrollment', $activeModule) ?>">
+			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2h12v2H2zM2 6h12v2H2zM2 10h12v2H2zM2 14h8v2H2z"/></svg>
+			Enrollment
+		</a>
 
 		<span class="nav-section-label">Clinic</span>
 		<a href="visitLogs.php" class="nav-item<?= navActive('visitLogs', $activeModule) ?>">
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.2"/><path d="M5 3V2M11 3V2M2 7h12"/></svg>
 			Visit Log
+		</a>
+		<a href="medicalCertificates.php" class="nav-item<?= navActive('medicalCertificates', $activeModule) ?>">
+			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2h10l1 3v9H2V5z"/><path d="M2 5h12M5 8h6M5 11h4"/></svg>
+			Medical Certificates
 		</a>
 		<a href="enrollmentHealth.php" class="nav-item<?= navActive('enrollmentHealth', $activeModule) ?>">
 			<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2h10l1 3v9H2V5z"/><path d="M2 5h12M8 8v4M6 10h4"/></svg>

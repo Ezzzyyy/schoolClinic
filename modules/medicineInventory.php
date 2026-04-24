@@ -35,6 +35,7 @@ $criticalCount   = $analytics['critical'];
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
     <link rel="stylesheet" href="../assets/css/medicineInventory.css" />
     <link rel="stylesheet" href="../assets/css/settings.css" />
+    <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 <div class="app-shell">
@@ -62,6 +63,12 @@ $criticalCount   = $analytics['critical'];
                         <option value="Low">Low</option>
                         <option value="Critical">Critical</option>
                     </select>
+                    <select class="module-select" id="expiryFilter">
+                        <option value="">All expiry status</option>
+                        <option value="Safe">Safe (90+ days)</option>
+                        <option value="Near Expiry">Near Expiry (≤90 days)</option>
+                        <option value="Expired">Expired</option>
+                    </select>
                     <button class="module-btn" type="button" id="openAddMedModal">+ Add Medicine</button>
                 </div>
             </section>
@@ -84,7 +91,7 @@ $criticalCount   = $analytics['critical'];
                                     $expiryPretty = date('M Y', strtotime((string)$med['expiration_date']));
                                     $isUrgent = $med['display_status'] !== 'Healthy';
                                 ?>
-                                <tr data-medicine-id="<?= (int)$med['medicine_id'] ?>" data-category="<?= e($med['category']) ?>" data-status="<?= e($med['display_status']) ?>">
+                                <tr data-medicine-id="<?= (int)$med['medicine_id'] ?>" data-category="<?= e($med['category']) ?>" data-status="<?= e($med['display_status']) ?>" data-expiry-status="<?= e($med['expiry_status'] ?? 'Safe') ?>">
                                     <td><strong><?= e($med['name']) ?></strong></td>
                                     <td><?= e($med['category']) ?></td>
                                     <td><?= (int)$med['quantity'] ?> <?= e($med['unit']) ?></td>
@@ -348,6 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput    = document.getElementById('medSearchInput');
     const categoryFilter = document.getElementById('categoryFilter');
     const stockFilter    = document.getElementById('stockFilter');
+    const expiryFilter   = document.getElementById('expiryFilter');
     const btnPrev        = document.getElementById('btnPrev');
     const btnNext        = document.getElementById('btnNext');
     const pageInfo       = document.getElementById('pageInfo');
@@ -357,21 +365,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let filteredRows = [];
 
     function filterTable() {
-        const q    = (searchInput?.value || '').toLowerCase();
-        const cat  = categoryFilter?.value || '';
-        const stock = stockFilter?.value || '';
+        const q      = (searchInput?.value || '').toLowerCase();
+        const cat    = categoryFilter?.value || '';
+        const stock  = stockFilter?.value || '';
+        const expiry = expiryFilter?.value || '';
         const allRows = Array.from(document.querySelectorAll('#medTable tbody tr'));
 
         filteredRows = allRows.filter(row => {
-            const name     = row.querySelector('td strong')?.textContent.toLowerCase() || '';
-            const category = row.dataset.category || '';
-            const status   = row.dataset.status || '';
+            const name       = row.querySelector('td strong')?.textContent.toLowerCase() || '';
+            const category   = row.dataset.category || '';
+            const status     = row.dataset.status || '';
+            const expiryStatus = row.dataset.expiryStatus || '';
 
-            const matchQ   = !q || name.includes(q) || category.toLowerCase().includes(q);
-            const matchCat = !cat || category === cat;
-            const matchSt  = !stock || status === stock;
+            const matchQ     = !q || name.includes(q) || category.toLowerCase().includes(q);
+            const matchCat   = !cat || category === cat;
+            const matchSt    = !stock || status === stock;
+            const matchExp   = !expiry || expiryStatus === expiry;
 
-            return matchQ && matchCat && matchSt;
+            return matchQ && matchCat && matchSt && matchExp;
         });
 
         currentPage = 1;
@@ -412,6 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput?.addEventListener('input', filterTable);
     categoryFilter?.addEventListener('change', filterTable);
     stockFilter?.addEventListener('change', filterTable);
+    expiryFilter?.addEventListener('change', filterTable);
 
     // Initial render
     filterTable();
@@ -437,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchInput.value = '';
         if (categoryFilter) categoryFilter.value = '';
         if (stockFilter) stockFilter.value = '';
+        if (expiryFilter) expiryFilter.value = '';
         filterTable();
 
         const allRows = Array.from(document.querySelectorAll('#medTable tbody tr'));
@@ -455,5 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>

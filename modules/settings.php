@@ -17,6 +17,13 @@ if (!in_array($initialTab, $allowedTabs, true)) {
   $initialTab = 'clinic';
 }
 
+// Clean up old audit logs with invalid actions
+$allowedActions = ['updated', 'exported', 'create', 'add', 'delete'];
+$placeholders = implode(',', array_fill(0, count($allowedActions), '?'));
+$query = "DELETE FROM audit_logs WHERE LOWER(action) NOT IN ($placeholders)";
+$stmt = $conn->prepare($query);
+$stmt->execute(array_map('strtolower', $allowedActions));
+
 // Get available roles from schema
 $availableRoles = ['nurse', 'doctor'];
 $roleColumn = $conn->query("SHOW COLUMNS FROM users LIKE 'role'")->fetch(PDO::FETCH_ASSOC);
@@ -39,6 +46,7 @@ $activeModule = 'settings';
   <title><?= htmlspecialchars($pageTitle) ?> - ClinIQ</title>
   <link rel="stylesheet" href="../assets/css/dashboard.css" />
   <link rel="stylesheet" href="../assets/css/settings.css" />
+  <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
   <style>
   .settings-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
   .settings-modal-overlay.show { opacity: 1; pointer-events: auto; }
@@ -77,6 +85,53 @@ $activeModule = 'settings';
       btn.classList.add('active');
       var target = document.getElementById('tab-' + tabId);
       if (target) target.classList.add('active');
+
+      // Load users when users tab is clicked
+      if (tabId === 'users') {
+          loadUsers();
+      }
+  }
+
+  function loadUsers() {
+      var tbody = document.getElementById('usersList');
+      if (!tbody) return;
+
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 28px; color: #6b7280;">Loading users...</td></tr>';
+
+      fetch('../actions/getUsers.php')
+      .then(response => response.json())
+      .then(data => {
+          if (!data.success || !data.users || data.users.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 28px; color: #6b7280;">No staff accounts found.</td></tr>';
+              return;
+          }
+
+          tbody.innerHTML = data.users.map(u => `
+              <tr>
+                  <td><strong>${u.name}</strong></td>
+                  <td class="mono" style="font-size:11.5px;">${u.email}</td>
+                  <td>${u.role}</td>
+                  <td>${u.last_login}</td>
+                  <td>
+                      <span class="status-pill ${u.status === 'active' ? 'ok' : (u.status === 'inactive' ? 'neutral' : 'warn')}">${u.status}</span>
+                  </td>
+                  <td class="row-actions">
+                      <button
+                          class="row-action-btn secondary"
+                          type="button"
+                          onclick="openUserEditModal(this)"
+                          data-user-id="${u.user_id}"
+                          data-user-name="${u.name}"
+                          data-role="${u.role_raw}"
+                          data-status="${u.status}"
+                      >Edit</button>
+                  </td>
+              </tr>
+          `).join('');
+      })
+      .catch(error => {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 28px; color: #ef4444;">Error loading users. Please try again.</td></tr>';
+      });
   }
   </script>
 </head>
@@ -177,51 +232,8 @@ $activeModule = 'settings';
           <div class="module-table-wrap">
             <table class="module-table settings-table">
               <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                <?php
-                $staff = $settingsModel->getUsers();
-                if (empty($staff)):
-                ?>
-                <tr>
-                  <td colspan="6" style="text-align: center; padding: 28px; color: #6b7280;">No staff accounts found.</td>
-                </tr>
-                <?php
-                else:
-                foreach ($staff as $u):
-                  $roleRaw = strtolower((string)($u['role'] ?? ''));
-                  if ($roleRaw === '1' || $roleRaw === 'admin') {
-                    $roleLabel = 'Admin';
-                  } elseif ($roleRaw === '2' || $roleRaw === 'nurse') {
-                    $roleLabel = 'Nurse';
-                  } elseif ($roleRaw === 'doctor') {
-                    $roleLabel = 'Doctor';
-                  } else {
-                    $roleLabel = ucfirst((string)($u['role'] ?? 'Assistant'));
-                  }
-                    $lastLogin = $u['last_login'] ? date('M d, H:i A', strtotime($u['last_login'])) : 'Never';
-                ?>
-                <tr>
-                  <td><strong><?= e($u['first_name'] . ' ' . $u['last_name']) ?></strong></td>
-                  <td class="mono" style="font-size:11.5px;"><?= e($u['email']) ?></td>
-                  <td><?= $roleLabel ?></td>
-                  <td><?= $lastLogin ?></td>
-                  <td>
-                    <?php $stat = strtolower($u['status']); ?>
-                    <span class="status-pill <?= ($stat === 'active') ? 'ok' : (($stat === 'inactive') ? 'neutral' : 'warn') ?>"><?= e($u['status']) ?></span>
-                  </td>
-                  <td class="row-actions">
-                    <button
-                      class="row-action-btn secondary"
-                      type="button"
-                      onclick="openUserEditModal(this)"
-                      data-user-id="<?= (int)($u['user_id'] ?? 0) ?>"
-                      data-user-name="<?= e(trim((string)($u['first_name'] ?? '') . ' ' . (string)($u['last_name'] ?? '')) ?: 'User') ?>"
-                      data-role="<?= e((string)($u['role'] ?? '')) ?>"
-                      data-status="<?= e((string)($u['status'] ?? 'active')) ?>"
-                    >Edit</button>
-                  </td>
-                </tr>
-                <?php endforeach; endif; ?>
+              <tbody id="usersList">
+                <tr><td colspan="6" style="text-align: center; padding: 28px; color: #6b7280;">Loading users...</td></tr>
               </tbody>
             </table>
           </div>
@@ -392,12 +404,11 @@ $activeModule = 'settings';
             <input type="text" placeholder="Search logs..." id="auditSearch" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; width: 200px;" />
             <select id="auditFilter" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
               <option value="">All Actions</option>
-              <option value="login">Login</option>
-              <option value="logout">Logout</option>
+              <option value="updated">Updated</option>
+              <option value="exported">Exported</option>
               <option value="create">Create</option>
-              <option value="update">Update</option>
+              <option value="add">Add</option>
               <option value="delete">Delete</option>
-              <option value="export">Export</option>
             </select>
           </div>
           <div class="module-table-wrap">
@@ -407,6 +418,7 @@ $activeModule = 'settings';
                 <tr><td colspan="6" style="text-align: center; padding: 40px; color: #9ca3af;">No audit logs found. Logs will appear here as users interact with the system.</td></tr>
               </tbody>
             </table>
+            <div id="auditPagination"></div>
           </div>
           <div class="settings-foot">
             <button class="settings-btn secondary" type="button" onclick="exportAuditLogs()">Export Logs</button>
@@ -481,14 +493,18 @@ function triggerManualBackup(button) {
     });
 }
 
-function loadAuditLogs(filter = '', search = '') {
-    fetch('../actions/getAuditLogs.php?filter=' + encodeURIComponent(filter) + '&search=' + encodeURIComponent(search))
+let currentAuditPage = 1;
+
+function loadAuditLogs(filter = '', search = '', page = 1) {
+    currentAuditPage = page;
+    fetch('../actions/getAuditLogs.php?filter=' + encodeURIComponent(filter) + '&search=' + encodeURIComponent(search) + '&page=' + page)
     .then(response => response.json())
     .then(data => {
         var tbody = document.getElementById('auditLogsList');
         if (!tbody) return;
         if (!data.logs || data.logs.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #9ca3af;">No logs found.</td></tr>';
+            updatePaginationControls(data.pagination);
             return;
         }
         tbody.innerHTML = data.logs.map(log => `
@@ -501,7 +517,36 @@ function loadAuditLogs(filter = '', search = '') {
                 <td>${log.description || '—'}</td>
             </tr>
         `).join('');
+        updatePaginationControls(data.pagination);
     });
+}
+
+function updatePaginationControls(pagination) {
+    var container = document.getElementById('auditPagination');
+    if (!container) return;
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0;">
+            <span style="font-size: 12px; color: #6b7280;">Showing page ${pagination.page} of ${pagination.total_pages} (${pagination.total} total)</span>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="loadAuditLogs(document.getElementById('auditFilter').value, document.getElementById('auditSearch').value, ${pagination.page - 1})" 
+                        ${pagination.has_prev ? '' : 'disabled'} 
+                        style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; ${pagination.has_prev ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                    Previous
+                </button>
+                <button onclick="loadAuditLogs(document.getElementById('auditFilter').value, document.getElementById('auditSearch').value, ${pagination.page + 1})" 
+                        ${pagination.has_next ? '' : 'disabled'} 
+                        style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; ${pagination.has_next ? '' : 'opacity: 0.5; cursor: not-allowed;'}">
+                    Next
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 function exportAuditLogs() { window.location.href = '../actions/exportAuditLogs.php'; }
@@ -546,6 +591,7 @@ function closeUserEditModal() {
     if (!modal) return;
     modal.classList.remove('show');
     setTimeout(function() { modal.style.display = 'none'; }, 220);
+    loadUsers();
 }
 
 function openAddUserModal() {
@@ -561,6 +607,7 @@ function closeAddUserModal() {
     if (!modal) return;
     modal.classList.remove('show');
     setTimeout(function() { modal.style.display = 'none'; }, 220);
+    loadUsers();
 }
 
 window.addEventListener('load', function() {
@@ -570,18 +617,20 @@ window.addEventListener('load', function() {
     var timeout;
     if (auditFilter) {
         auditFilter.addEventListener('change', function() {
-            loadAuditLogs(this.value, auditSearch ? auditSearch.value : '');
+            loadAuditLogs(this.value, auditSearch ? auditSearch.value : '', 1);
         });
     }
     if (auditSearch) {
         auditSearch.addEventListener('input', function() {
             clearTimeout(timeout);
             timeout = setTimeout(function() {
-                loadAuditLogs(auditFilter ? auditFilter.value : '', auditSearch.value);
+                loadAuditLogs(auditFilter ? auditFilter.value : '', auditSearch.value, 1);
             }, 300);
         });
     }
 });
 </script>
+<script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>

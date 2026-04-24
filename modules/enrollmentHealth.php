@@ -38,6 +38,7 @@ $certStats    = $visitModel->getCertificateStats();
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
     <link rel="stylesheet" href="../assets/css/enrollmentHealth.css" />
     <link rel="stylesheet" href="../assets/css/settings.css" />
+    <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 <div class="app-shell">
@@ -454,5 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>

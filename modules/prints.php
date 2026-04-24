@@ -16,6 +16,7 @@ $activeModule = 'prints';
 	<title><?= htmlspecialchars($pageTitle) ?> - ClinIQ</title>
 	<link rel="stylesheet" href="../assets/css/dashboard.css" />
 	<link rel="stylesheet" href="../assets/css/prints.css" />
+	<link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 <div class="app-shell">
@@ -62,6 +63,8 @@ $activeModule = 'prints';
 		</div>
 	</div>
 </div>
+<script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>
 

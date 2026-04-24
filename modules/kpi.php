@@ -16,6 +16,7 @@ $activeModule = 'kpi';
 	<title><?= htmlspecialchars($pageTitle) ?> - ClinIQ</title>
 	<link rel="stylesheet" href="../assets/css/dashboard.css" />
 	<link rel="stylesheet" href="../assets/css/kpi.css" />
+	<link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 <div class="app-shell">
@@ -56,6 +57,8 @@ $activeModule = 'kpi';
 		</div>
 	</div>
 </div>
+<script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>
 

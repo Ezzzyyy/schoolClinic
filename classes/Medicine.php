@@ -28,8 +28,20 @@ class Medicine extends BaseModel {
         foreach ($medicines as &$m) {
             // Expiry check
             $expiryTime = strtotime((string)$m['expiration_date']);
-            if ($expiryTime && ($expiryTime - $now <= $threeMonthsSec)) {
-                $stats['near_expiry']++;
+            if ($expiryTime) {
+                $daysUntilExpiry = ($expiryTime - $now) / (24 * 60 * 60);
+                
+                if ($daysUntilExpiry < 0) {
+                    $m['expiry_status'] = 'Expired';
+                    $stats['near_expiry']++; // Count expired as near expiry for the KPI
+                } elseif ($daysUntilExpiry <= 90) {
+                    $m['expiry_status'] = 'Near Expiry';
+                    $stats['near_expiry']++;
+                } else {
+                    $m['expiry_status'] = 'Safe';
+                }
+            } else {
+                $m['expiry_status'] = 'Safe'; // No expiry date = safe
             }
 
             // Status Logic

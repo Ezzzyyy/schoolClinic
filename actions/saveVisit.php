@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../classes/Visit.php';
 require_once __DIR__ . '/../classes/Medicine.php';
@@ -21,6 +22,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Get Database Connection
 $db = new Database();
 $conn = $db->connect();
+
+// Ensure audit logs table exists
+ensureAuditLogsTable($conn);
+
+function writeAuditLog(PDO $conn, int $userId, string $action, ?string $entityType, ?int $entityId, ?string $description): void
+{
+    $stmt = $conn->prepare(
+        'INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip_address)'
+    );
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':action', $action, PDO::PARAM_STR);
+    $stmt->bindValue(':entity_type', $entityType, $entityType === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':entity_id', $entityId, $entityId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+    $stmt->bindValue(':description', $description, $description === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'] ?? null, !empty($_SERVER['REMOTE_ADDR']) ? PDO::PARAM_STR : PDO::PARAM_NULL);
+    $stmt->execute();
+}
 
 // Instantiate Models
 $visitModel = new Visit($conn);
@@ -63,7 +81,7 @@ if ($visitId) {
     // 4. Handle Dispensed Medicines
     $medicineIds = $_POST['medicine_id'] ?? [];
     $quantities  = $_POST['quantity'] ?? [];
-    
+
     foreach ($medicineIds as $index => $medId) {
         $qty = (int)($quantities[$index] ?? 0);
         if ($medId > 0 && $qty > 0) {
@@ -71,6 +89,7 @@ if ($visitId) {
         }
     }
 
+    writeAuditLog($conn, (int)$_SESSION['user_id'], 'create', 'visit', $visitId, 'Created clinic visit for student');
     echo json_encode(['success' => true, 'message' => 'Visit and medicine usage logged successfully']);
 } else {
     echo json_encode(['success' => false, 'message' => 'Failed to save visit']);

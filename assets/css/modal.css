@@ -402,6 +402,21 @@ body.modal-open {
 	color: #991b1b;
 }
 
+.approval-btn.pending {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.approval-btn.completed {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.approval-btn.referred {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
 .visit-timeline {
 	display: grid;
 	gap: 12px;
@@ -444,6 +459,104 @@ body.modal-open {
 
 .vt-date {
 	margin: 2px 0 0;
+	font-size: 11px;
+	color: var(--text-muted, #6b7280);
+}
+
+/* Visit Cards Grid */
+.visit-cards-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 14px;
+}
+
+.visit-card {
+	border: 1px solid rgba(226, 232, 240, 0.95);
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.95);
+	overflow: hidden;
+	transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.visit-card:hover {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+	transform: translateY(-2px);
+}
+
+.visit-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 14px;
+	background: linear-gradient(135deg, rgba(91, 106, 240, 0.05) 0%, rgba(248, 250, 255, 0.95) 100%);
+	border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.visit-card-date {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-primary, #1f2937);
+}
+
+.visit-card-status {
+	font-size: 11px;
+	font-weight: 700;
+	padding: 4px 10px;
+	border-radius: 12px;
+	text-transform: capitalize;
+}
+
+.visit-card-status.pending {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.visit-card-status.completed {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.visit-card-status.referred {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.visit-card-body {
+	padding: 12px 14px;
+}
+
+.visit-card-row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 10px;
+}
+
+.visit-card-row:last-child {
+	margin-bottom: 0;
+}
+
+.visit-card-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--text-muted, #6b7280);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.visit-card-value {
+	font-size: 13px;
+	color: var(--text-primary, #1f2937);
+	line-height: 1.4;
+}
+
+.visit-card-footer {
+	padding: 10px 14px;
+	border-top: 1px solid rgba(226, 232, 240, 0.8);
+	background: rgba(248, 250, 255, 0.5);
+}
+
+.visit-card-handler {
 	font-size: 11px;
 	color: var(--text-muted, #6b7280);
 }

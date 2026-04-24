@@ -65,6 +65,9 @@ foreach ($students as $row) {
   <link rel="stylesheet" href="../assets/css/dashboard.css" />
   <link rel="stylesheet" href="../assets/css/studentRecords.css" />
   <link rel="stylesheet" href="../assets/css/modal.css" />
+  <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
+  <script src="../assets/js/popup.js" defer></script>
+  <script src="../assets/js/notifications.js" defer></script>
 </head>
 <body>
 
@@ -129,7 +132,7 @@ foreach ($students as $row) {
         <div class="records-table-wrap">
           <table class="records-table" id="recordsTable">
             <thead>
-              <tr data-student-id="<?= (int)$row['student_id'] ?>">
+              <tr>
                 <th>Student</th>
                 <th>Student No.</th>
                 <th>Course &amp; Year</th>
@@ -143,7 +146,7 @@ foreach ($students as $row) {
                 $statusClass = strtolower(str_replace(' ', '-', $row['status']));
                 $initials = strtoupper($row['first_name'][0] . $row['last_name'][0]);
               ?>
-              <tr>
+              <tr data-student-id="<?= (int)$row['student_id'] ?>">
                 <td>
                   <div class="student-cell">
                     <div class="student-avatar" style="--av-color: #6366f1"><?= e($initials) ?></div>
@@ -434,6 +437,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function highlightFromQuery() {
     const params = new URLSearchParams(window.location.search);
+    
+    // Handle search parameter from global search
+    const searchParam = params.get('search');
+    if (searchParam) {
+      searchInput.value = searchParam;
+      filterTable();
+    }
+    
     if (params.get('highlight') !== 'student') return;
 
     const studentId = params.get('student_id');

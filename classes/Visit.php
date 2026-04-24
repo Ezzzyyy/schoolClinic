@@ -153,7 +153,32 @@ class Visit extends BaseModel {
      * Fetch all users who are clinic staff (nurses/doctors) for filters.
      */
     public function getAllHandlers(): array {
-        $query = "SELECT user_id, first_name, last_name, role FROM users WHERE role IN ('nurse', 'doctor') ORDER BY last_name ASC";
+        // Check role column type to determine how to filter
+        $colStmt = $this->db->query("SHOW COLUMNS FROM users LIKE 'role'");
+        $col = $colStmt ? $colStmt->fetch(PDO::FETCH_ASSOC) : null;
+        
+        if ($col && preg_match('/^enum\((.*)\)$/i', $col['Type'] ?? '', $matches)) {
+            // If enum, get the actual enum values
+            $enumVals = str_getcsv($matches[1], ',', "'");
+            $lowerVals = array_map('strtolower', array_map('trim', $enumVals));
+            
+            // Check for nurse/doctor variants
+            $nurseMatch = in_array('nurse', $lowerVals) || in_array('2', $lowerVals);
+            $doctorMatch = in_array('doctor', $lowerVals);
+            
+            if ($nurseMatch && $doctorMatch) {
+                $query = "SELECT user_id, first_name, last_name, role FROM users WHERE LOWER(role) IN ('nurse', 'doctor') ORDER BY last_name ASC";
+            } elseif ($nurseMatch) {
+                $query = "SELECT user_id, first_name, last_name, role FROM users WHERE LOWER(role) = 'nurse' OR role = '2' ORDER BY last_name ASC";
+            } else {
+                // Fallback: get all non-admin users
+                $query = "SELECT user_id, first_name, last_name, role FROM users WHERE LOWER(role) != 'admin' AND role != '1' ORDER BY last_name ASC";
+            }
+        } else {
+            // String or int column - try flexible matching
+            $query = "SELECT user_id, first_name, last_name, role FROM users WHERE LOWER(role) IN ('nurse', 'doctor', '2') ORDER BY last_name ASC";
+        }
+        
         return $this->db->query($query)->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -242,6 +267,23 @@ class Visit extends BaseModel {
                   WHERE vm.visit_id = ?";
         $stmt = $this->db->prepare($query);
         $stmt->execute([$visitId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Get all visits for a specific student.
+     */
+    public function getByStudentId(int $studentId): array {
+        $query = "SELECT cv.*, 
+                         vs.status_name,
+                         u.first_name as handler_first, u.last_name as handler_last
+                  FROM clinic_visits cv
+                  JOIN visit_status vs ON cv.visit_status = vs.status_id
+                  JOIN users u ON cv.handled_by = u.user_id
+                  WHERE cv.student_id = ?
+                  ORDER BY cv.visit_date DESC";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$studentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

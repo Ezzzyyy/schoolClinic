@@ -163,5 +163,67 @@ function switchTab(btn, tabId) {
   // Activate selected
   btn.classList.add('active');
   document.getElementById('tab-' + tabId)?.classList.add('active');
+
+  // Load visit history when visits tab is clicked
+  if (tabId === 'visits' && typeof currentStudentId !== 'undefined' && currentStudentId) {
+    loadVisitHistory(currentStudentId);
+  }
+}
+
+async function loadVisitHistory(studentId) {
+  const container = document.getElementById('visitTimelineContainer');
+  if (!container) return;
+
+  container.innerHTML = '<p style="text-align:center; padding:20px; color:#6b7280;">Loading visit history...</p>';
+  container.style.padding = '16px';
+
+  try {
+    const response = await fetch(`../actions/getStudentVisits.php?student_id=${studentId}`);
+    const data = await response.json();
+
+    if (!data.success || !data.visits || data.visits.length === 0) {
+      container.innerHTML = '<p class="empty-state" style="text-align:center; padding:20px; color:#6b7280;">No visit history available for this student.</p>';
+      return;
+    }
+
+    container.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">' + data.visits.map(v => `
+      <div style="border:1px solid #e2e8f0; border-radius:12px; background:#ffffff; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+          <div style="font-size:12px; font-weight:600; color:#1f2937;">${v.visit_date}</div>
+          <span style="font-size:11px; font-weight:700; padding:4px 10px; border-radius:12px; text-transform:capitalize; background:${v.status.toLowerCase() === 'pending' ? '#fef3c7' : v.status.toLowerCase() === 'completed' ? '#dcfce7' : '#fee2e2'}; color:${v.status.toLowerCase() === 'pending' ? '#92400e' : v.status.toLowerCase() === 'completed' ? '#166534' : '#991b1b'};">${v.status}</span>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Complaint</div>
+            <div style="font-size:13px; color:#1f2937; line-height:1.4;">${v.complaint}</div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Diagnosis</div>
+            <div style="font-size:13px; color:#1f2937; line-height:1.4;">${v.diagnosis}</div>
+          </div>
+          ${v.symptoms ? `
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Symptoms</div>
+            <div style="font-size:13px; color:#1f2937; line-height:1.4;">${v.symptoms}</div>
+          </div>` : ''}
+          ${v.treatment ? `
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Treatment</div>
+            <div style="font-size:13px; color:#1f2937; line-height:1.4;">${v.treatment}</div>
+          </div>` : ''}
+          ${v.notes ? `
+          <div style="margin-bottom:0;">
+            <div style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Notes</div>
+            <div style="font-size:13px; color:#1f2937; line-height:1.4;">${v.notes}</div>
+          </div>` : ''}
+        </div>
+        <div style="padding:10px 14px; border-top:1px solid #e2e8f0; background:#f8fafc;">
+          <div style="font-size:11px; color:#6b7280;">Handled by: ${v.handler}</div>
+        </div>
+      </div>
+    `).join('') + '</div>';
+  } catch (error) {
+    container.innerHTML = '<p style="text-align:center; padding:20px; color:#ef4444;">Error loading visit history. Please try again.</p>';
+  }
 }
 </script>

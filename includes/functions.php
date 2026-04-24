@@ -11,6 +11,15 @@ if (!function_exists('e')) {
 }
 
 /**
+ * Sanitize input data
+ */
+if (!function_exists('sanitize')) {
+    function sanitize($value) {
+        return trim(htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'));
+    }
+}
+
+/**
  * Simple redirect helper
  */
 if (!function_exists('redirect')) {

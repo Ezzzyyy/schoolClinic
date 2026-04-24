@@ -206,7 +206,7 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
   background: transparent;
 }
 
@@ -341,10 +341,14 @@ html, body {
   opacity: 0.85;
 }
 
-.profile-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+.profile-chip .profile-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
   font-size: 12px;
@@ -352,8 +356,47 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden !important;
   flex-shrink: 0;
-  letter-spacing: 0.5px;
+}
+
+.header-profile-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important;
+  flex-shrink: 0;
+}
+
+.header-profile-img {
+  width: 36px !important;
+  height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  display: block !important;
+}
+
+.profile-chip .profile-avatar img {
+  width: 36px !important;
+  height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  object-fit: cover !important;
+  border-radius: 50% !important;
+  display: block;
 }
 
 .profile-info .profile-name {
@@ -370,8 +413,6 @@ html, body {
 
 /* ── DASHBOARD BODY ── */
 .dashboard-body {
-  flex: 1;
-  overflow-y: auto;
   padding: 20px 28px 24px;
   display: flex;
   flex-direction: column;

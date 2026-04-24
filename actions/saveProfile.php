@@ -130,13 +130,14 @@ try {
             $photoStmt->bindValue(':profile_photo', $relativePath, PDO::PARAM_STR);
             $photoStmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $photoStmt->execute();
+            $_SESSION['profile_photo'] = $relativePath;
         }
 
         $_SESSION['username'] = $username;
         $_SESSION['full_name'] = $firstName . ' ' . $lastName;
         $_SESSION['profile_msg'] = 'Profile information updated successfully.';
         $_SESSION['profile_msg_type'] = 'success';
-        writeAuditLog($conn, $userId, 'Updated profile', 'user', $userId, 'Updated profile information.');
+        writeAuditLog($conn, $userId, 'updated', 'user', $userId, 'Updated profile information.');
     } elseif ($formType === 'password_change') {
         $currentPassword = (string) ($_POST['current_password'] ?? '');
         $newPassword = (string) ($_POST['new_password'] ?? '');
@@ -171,7 +172,7 @@ try {
 
         $_SESSION['profile_msg'] = 'Password changed successfully.';
         $_SESSION['profile_msg_type'] = 'success';
-        writeAuditLog($conn, $userId, 'Changed password', 'user', $userId, 'Updated account password.');
+        writeAuditLog($conn, $userId, 'updated', 'user', $userId, 'Updated account password.');
     } else {
         throw new RuntimeException('Invalid profile request.');
     }

@@ -56,6 +56,7 @@ $enrollmentSummary = $studentModel->getAssessmentSummary();
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><?= htmlspecialchars($pageTitle) ?> — ClinIQ</title>
   <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 
@@ -293,6 +294,7 @@ $enrollmentSummary = $studentModel->getAssessmentSummary();
 
 <?php include __DIR__ . '/../assets/popups/logout.php'; ?>
 <script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 
 </body>
 </html>

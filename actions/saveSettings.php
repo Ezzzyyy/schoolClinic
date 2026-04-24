@@ -21,7 +21,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $db = new Database();
 $conn = $db->connect();
+ensureAuditLogsTable($conn);
 $settingsModel = new Settings($conn);
+
+function writeAuditLog(PDO $conn, int $userId, string $action, ?string $entityType, ?int $entityId, ?string $description): void
+{
+    $stmt = $conn->prepare(
+        'INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip_address)'
+    );
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':action', $action, PDO::PARAM_STR);
+    $stmt->bindValue(':entity_type', $entityType, $entityType === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':entity_id', $entityId, $entityId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+    $stmt->bindValue(':description', $description, $description === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'] ?? null, !empty($_SERVER['REMOTE_ADDR']) ? PDO::PARAM_STR : PDO::PARAM_NULL);
+    $stmt->execute();
+}
 
 $formType = $_POST['form_type'] ?? '';
 $dataToSave = [];
@@ -133,9 +148,9 @@ if ($formType === 'clinic_setup') {
 } elseif ($formType === 'clear_old_logs') {
     // Clear audit logs older than 90 days
     header('Content-Type: application/json');
-    
+
     $query = "DELETE FROM audit_logs WHERE timestamp < DATE_SUB(NOW(), INTERVAL 90 DAY)";
-    
+
     if ($conn->query($query)) {
         echo json_encode(['success' => true, 'message' => 'Old logs cleared successfully!']);
     } else {
@@ -147,6 +162,7 @@ if ($formType === 'clinic_setup') {
 if (!empty($dataToSave)) {
     $ok = $settingsModel->saveMultiple($dataToSave);
     if ($ok) {
+        writeAuditLog($conn, (int)($_SESSION['user_id'] ?? 0), 'updated', 'settings', null, "Updated settings: $formType");
         $_SESSION['msg'] = 'Settings updated successfully.';
         $_SESSION['msg_type'] = 'success';
     } else {

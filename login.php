@@ -28,6 +28,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['role']      = $user['role'];
                 $_SESSION['full_name'] = $user['first_name'] . ' ' . $user['last_name'];
 
+                // Check if last_login column exists
+                $colStmt = $conn->query("SHOW COLUMNS FROM users LIKE 'last_login'");
+                if (!$colStmt || !$colStmt->fetch()) {
+                    $conn->exec("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL DEFAULT NULL AFTER email");
+                }
+
+                // Update last_login timestamp
+                $updateStmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE user_id = ?");
+                $updateStmt->execute([$user['user_id']]);
+
                 redirect('modules/dashboard.php');
             } else {
                 $error = 'Invalid username/email or password.';

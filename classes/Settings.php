@@ -48,6 +48,9 @@ class Settings extends BaseModel {
      * Get all users for the settings table.
      */
     public function getUsers(): array {
+        $this->ensureLastLoginColumn();
+        $this->ensureStatusColumn();
+
         $hasLastLogin = false;
         $hasStatus = false;
 
@@ -68,5 +71,29 @@ class Settings extends BaseModel {
 
         $query = "SELECT user_id, first_name, last_name, email, role, {$lastLoginExpr}, {$statusExpr} FROM users ORDER BY last_name ASC";
         return $this->db->query($query)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Ensure last_login column exists in users table.
+     */
+    private function ensureLastLoginColumn(): void {
+        $colStmt = $this->db->query("SHOW COLUMNS FROM users LIKE 'last_login'");
+        if ($colStmt && $colStmt->fetch()) {
+            return;
+        }
+        $this->db->exec("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL DEFAULT NULL AFTER email");
+        // Set current timestamp for existing users
+        $this->db->exec("UPDATE users SET last_login = NOW() WHERE last_login IS NULL");
+    }
+
+    /**
+     * Ensure status column exists in users table.
+     */
+    private function ensureStatusColumn(): void {
+        $colStmt = $this->db->query("SHOW COLUMNS FROM users LIKE 'status'");
+        if ($colStmt && $colStmt->fetch()) {
+            return;
+        }
+        $this->db->exec("ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'active' AFTER role");
     }
 }

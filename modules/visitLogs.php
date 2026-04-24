@@ -62,6 +62,8 @@ foreach ($visits as $v) {
     <meta name="description" content="View and manage all clinic visit records." />
     <link rel="stylesheet" href="../assets/css/dashboard.css" />
     <link rel="stylesheet" href="../assets/css/visitLogs.css" />
+    <link rel="stylesheet" href="../assets/css/modal.css" />
+    <link rel="stylesheet" href="../assets/css/notifications_popup.css" />
 </head>
 <body>
 <div class="app-shell">
@@ -189,40 +191,114 @@ foreach ($visits as $v) {
 </div>
 
 <!-- View Visit Detail Modal -->
-<div class="vd-modal" id="viewVisitModal" role="dialog" aria-modal="true" aria-label="Visit details">
-    <div class="vd-panel">
-        <div class="vd-head">
+<div class="modal-backdrop" id="viewVisitModal" role="dialog" aria-modal="true" aria-label="Visit details">
+    <div class="modal-panel" style="max-width: 650px;">
+        <div class="modal-header">
             <div>
-                <h3>Visit Record</h3>
-                <p id="vdSubtitle">Loading…</p>
+                <h2 class="modal-student-name" id="vdSubtitle">Loading…</h2>
+                <p class="modal-student-meta">Visit Record</p>
             </div>
-            <button class="log-visit-close" data-close-vd type="button" aria-label="Close">
-                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l12 12M13 1L1 13"/></svg>
+            <button class="modal-close-btn" type="button" data-close-vd aria-label="Close modal">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l10 10M13 3L3 13"/></svg>
             </button>
         </div>
-        <div class="vd-body">
-            <div class="vd-row">
-                <div class="vd-field"><span>Student</span><div id="vdStudent">—</div></div>
-                <div class="vd-field"><span>Date &amp; Time</span><div id="vdDate">—</div></div>
+        <div class="modal-body">
+            <div class="modal-info-grid">
+                <div class="modal-info-section">
+                    <h3 class="modal-section-label">Visit Information</h3>
+                    <div class="info-rows">
+                        <div class="info-row">
+                            <span class="info-key">Student</span>
+                            <span class="info-val" id="vdStudent">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-key">Date &amp; Time</span>
+                            <span class="info-val" id="vdDate">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-key">Complaint</span>
+                            <span class="info-val" id="vdComplaint">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-key">Diagnosis</span>
+                            <span class="info-val" id="vdDiagnosis">—</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-info-section">
+                    <h3 class="modal-section-label">Details</h3>
+                    <div class="info-rows">
+                        <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                            <span class="info-key">Symptoms</span>
+                            <p class="info-val" id="vdSymptoms" style="font-size:0.9rem; line-height:1.5; color:var(--text-main);">—</p>
+                        </div>
+                        <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                            <span class="info-key">Treatment</span>
+                            <p class="info-val" id="vdTreatment" style="font-size:0.9rem; line-height:1.5; color:var(--text-main);">—</p>
+                        </div>
+                        <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                            <span class="info-key">Medicines Dispensed</span>
+                            <div id="vdMedicines" style="display:flex; flex-wrap:wrap; gap:6px;">—</div>
+                        </div>
+                        <div class="info-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                            <span class="info-key">Notes</span>
+                            <p class="info-val" id="vdNotes" style="font-size:0.9rem; line-height:1.5; color:var(--text-main);">—</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="vd-row">
-                <div class="vd-field"><span>Complaint</span><div id="vdComplaint">—</div></div>
-                <div class="vd-field"><span>Diagnosis</span><div id="vdDiagnosis">—</div></div>
-            </div>
-            <div class="vd-row">
-                <div class="vd-field"><span>Symptoms</span><div id="vdSymptoms" style="color:var(--text-primary); font-size:13.5px;">—</div></div>
-                <div class="vd-field"><span>Treatment</span><div id="vdTreatment" style="color:var(--text-primary); font-size:13.5px;">—</div></div>
-            </div>
-            <div class="vd-row single">
-                <div class="vd-field"><span>Medicines Dispensed</span><div id="vdMedicines" style="color:var(--text-primary); font-size:13.5px; display:flex; flex-wrap:wrap; gap:6px;">—</div></div>
-            </div>
-            <div class="vd-row single">
-                <div class="vd-field"><span>Notes</span><div id="vdNotes" style="color:var(--text-primary); font-size:13.5px;">—</div></div>
+            <!-- Status update section -->
+            <div class="approval-section" id="statusUpdateSection">
+                <h3 class="modal-section-label">Visit Status Update</h3>
+                <p class="approval-note">Update the status of this clinic visit record.</p>
+                <label class="form-field full-width">
+                    <span>Remarks / Notes</span>
+                    <textarea id="vdRemarks" rows="3" placeholder="Enter any remarks for this visit…"></textarea>
+                </label>
+                <div class="approval-actions">
+                    <button id="btnPending" class="approval-btn conditional" data-status="1" data-status-name="Pending" type="button">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11v.5"/></svg>
+                        Pending
+                    </button>
+                    <button id="btnCompleted" class="approval-btn approve" data-status="2" data-status-name="Completed" type="button">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l3.5 3.5L13 5"/></svg>
+                        Completed
+                    </button>
+                    <button id="btnReferred" class="approval-btn reject" data-status="3" data-status-name="Referred" type="button">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                        Referred
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="vd-foot">
-            <span id="vdStatus"></span>
-            <button class="visit-btn secondary" data-close-vd type="button">Close</button>
+        <div class="modal-footer">
+            <span class="modal-footer-status">
+                <span id="vdStatus"></span>
+            </span>
+            <div class="modal-footer-actions">
+                <button class="toolbar-button secondary" type="button" data-close-vd>Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-label="Confirm action">
+    <div class="modal-panel" style="max-width: 400px;">
+        <div class="modal-header">
+            <h2 class="modal-student-name">Confirm Status Change</h2>
+            <button class="modal-close-btn" type="button" id="closeConfirmModal" aria-label="Close modal">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l10 10M13 3L3 13"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage" style="color: var(--text-main); font-size: 14px; line-height: 1.5;">Are you sure you want to change the visit status?</p>
+        </div>
+        <div class="modal-footer">
+            <div class="modal-footer-actions">
+                <button class="toolbar-button secondary" type="button" id="cancelConfirm">Cancel</button>
+                <button class="toolbar-button" type="button" id="confirmAction">Confirm</button>
+            </div>
         </div>
     </div>
 </div>
@@ -397,10 +473,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // View modal
     const viewModal = document.getElementById('viewVisitModal');
+    let currentVisitId = null;
     document.querySelectorAll('.visit-action-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const v = visitData[btn.dataset.visit];
             if (!v) return;
+            currentVisitId = btn.dataset.visit;
             document.getElementById('vdSubtitle').textContent = `${v.student} · ${v.id}`;
             document.getElementById('vdStudent').textContent = `${v.student} (${v.id})`;
             document.getElementById('vdDate').textContent = v.date;
@@ -431,12 +509,133 @@ document.addEventListener('DOMContentLoaded', () => {
             const st = document.getElementById('vdStatus');
             st.textContent = v.status;
             st.className = `visit-status ${v.statusClass}`;
+
+            // Populate remarks field
+            const remarksField = document.getElementById('vdRemarks');
+            if (remarksField) remarksField.value = v.notes || '';
+
+            // Hide status update section if completed
+            const statusUpdateSection = document.getElementById('statusUpdateSection');
+            if (v.statusClass === 'completed') {
+                statusUpdateSection.style.display = 'none';
+            } else {
+                statusUpdateSection.style.display = 'block';
+                // Disable the button that matches current status
+                const statusMap = { 'pending': '1', 'completed': '2', 'referred': '3' };
+                const currentStatusId = statusMap[v.statusClass] || '';
+                document.querySelectorAll('[data-status]').forEach(btn => {
+                    btn.disabled = false;
+                    if (btn.dataset.status === currentStatusId) {
+                        btn.disabled = true;
+                    }
+                });
+            }
+
             viewModal?.classList.add('is-open');
+            document.body.classList.add('modal-open');
         });
     });
 
-    document.querySelectorAll('[data-close-vd]').forEach(b => b.addEventListener('click', () => viewModal?.classList.remove('is-open')));
-    viewModal?.addEventListener('click', e => { if(e.target===viewModal) viewModal.classList.remove('is-open'); });
+    document.querySelectorAll('[data-close-vd]').forEach(b => b.addEventListener('click', () => {
+        viewModal?.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+    }));
+    viewModal?.addEventListener('click', e => {
+        if(e.target===viewModal) {
+            viewModal.classList.remove('is-open');
+            document.body.classList.remove('modal-open');
+        }
+    });
+
+    // Update visit status via buttons
+    let pendingStatusUpdate = null;
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmActionBtn = document.getElementById('confirmAction');
+    const cancelConfirmBtn = document.getElementById('cancelConfirm');
+    const closeConfirmModalBtn = document.getElementById('closeConfirmModal');
+
+    function showConfirmModal(message, callback) {
+        confirmMessage.textContent = message;
+        confirmModal.classList.add('is-open');
+        document.body.classList.add('modal-open');
+        pendingStatusUpdate = callback;
+    }
+
+    function hideConfirmModal() {
+        confirmModal.classList.remove('is-open');
+        document.body.classList.remove('modal-open');
+        pendingStatusUpdate = null;
+    }
+
+    cancelConfirmBtn?.addEventListener('click', hideConfirmModal);
+    closeConfirmModalBtn?.addEventListener('click', hideConfirmModal);
+    confirmModal?.addEventListener('click', e => {
+        if (e.target === confirmModal) hideConfirmModal();
+    });
+
+    confirmActionBtn?.addEventListener('click', () => {
+        if (pendingStatusUpdate) {
+            pendingStatusUpdate();
+        }
+        hideConfirmModal();
+    });
+
+    document.querySelectorAll('[data-status]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!currentVisitId) return;
+
+            const newStatusId = btn.dataset.status;
+            const statusName = btn.dataset.statusName;
+            const remarks = document.getElementById('vdRemarks')?.value || '';
+
+            if (!newStatusId) return;
+
+            // Show custom confirmation modal
+            showConfirmModal(`Are you sure you want to mark this visit as ${statusName}?`, async () => {
+                // Disable all status buttons
+                document.querySelectorAll('[data-status]').forEach(b => {
+                    b.disabled = true;
+                });
+
+                const originalText = btn.textContent;
+                btn.textContent = 'Updating...';
+
+                try {
+                    const formData = new FormData();
+                    formData.append('visit_id', currentVisitId);
+                    formData.append('status_id', newStatusId);
+                    formData.append('remarks', remarks);
+
+                    const response = await fetch('../actions/updateVisitStatus.php', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Reload to reflect changes
+                        location.reload();
+                    } else {
+                        alert('Error: ' + result.message);
+                        btn.textContent = originalText;
+                        // Re-enable all status buttons on error
+                        document.querySelectorAll('[data-status]').forEach(b => {
+                            b.disabled = false;
+                        });
+                    }
+                } catch (err) {
+                    alert('Connection error. Please try again.');
+                    btn.textContent = originalText;
+                    // Re-enable all status buttons on error
+                    document.querySelectorAll('[data-status]').forEach(b => {
+                        b.disabled = false;
+                    });
+                }
+            });
+        });
+    });
 
     // Log visit modal
     const logBtn = document.getElementById('openLogVisitModal');
@@ -498,5 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
+<script src="../assets/js/popup.js" defer></script>
+<script src="../assets/js/notifications.js" defer></script>
 </body>
 </html>

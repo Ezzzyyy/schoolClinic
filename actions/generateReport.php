@@ -7,6 +7,24 @@ require_once __DIR__ . '/../classes/Report.php';
 
 protectPage(1);
 
+$db = new Database();
+$conn = $db->connect();
+ensureAuditLogsTable($conn);
+
+function writeAuditLog(PDO $conn, int $userId, string $action, ?string $entityType, ?int $entityId, ?string $description): void
+{
+    $stmt = $conn->prepare(
+        'INSERT INTO audit_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip_address)'
+    );
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':action', $action, PDO::PARAM_STR);
+    $stmt->bindValue(':entity_type', $entityType, $entityType === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':entity_id', $entityId, $entityId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+    $stmt->bindValue(':description', $description, $description === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+    $stmt->bindValue(':ip_address', $_SERVER['REMOTE_ADDR'] ?? null, !empty($_SERVER['REMOTE_ADDR']) ? PDO::PARAM_STR : PDO::PARAM_NULL);
+    $stmt->execute();
+}
+
 $reportType = $_POST['reportType'] ?? '';
 $dateFrom   = $_POST['dateFrom'] ?? '';
 $dateTo     = $_POST['dateTo'] ?? '';
@@ -32,8 +50,6 @@ if (empty($reportType)) {
     die("Error: Report type is required.");
 }
 
-$db = new Database();
-$conn = $db->connect();
 $reportModel = new Report($conn);
 
 $data = [];
@@ -72,7 +88,13 @@ switch ($reportType) {
         break;
 }
 
-// Log the report generation
+// Log report generation
+writeAuditLog($conn, (int)($_SESSION['user_id'] ?? 0), 'exported', 'report', null, "Generated report: $reportType");
+
+if (empty($data)) {
+    die("Error: No data found for the report.");
+}
+
 $reportModel->logReport(
     $reportType,
     ($dateFrom && $dateTo) ? "$dateFrom to $dateTo" : "Full History",
