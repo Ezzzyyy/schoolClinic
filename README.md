@@ -35,8 +35,7 @@ SOURCE path/to/schema/school_clinic_db.sql;
 
 ### 3. Configure Database Connection
 
-1. Copy `config/database.example.php` to `config/database.php`
-2. Edit `config/database.php` with your database credentials:
+Edit `config/database.php` with your database credentials:
 
 ```php
 <?php
