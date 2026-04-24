@@ -1,4 +1,7 @@
-USE school_clinic_db;
+-- ============================================================
+-- CREATE: notifications table
+-- Run this ONCE against your school clinic database.
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS notifications (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,

@@ -11,7 +11,8 @@ class HealthAssessment extends BaseModel {
         ];
 
         foreach ($columns as $column => $sql) {
-            $stmt = $this->db->query("SHOW COLUMNS FROM health_assessments LIKE " . $this->db->quote($column));
+            $stmt = $this->db->prepare("SHOW COLUMNS FROM health_assessments LIKE ?");
+            $stmt->execute([$column]);
             if (!$stmt || $stmt->fetchColumn() === false) {
                 $this->db->exec($sql);
             }

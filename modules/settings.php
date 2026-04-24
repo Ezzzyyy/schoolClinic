@@ -55,27 +55,51 @@ $activeModule = 'settings';
   .popup-icon { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; font-weight: bold; }
   .settings-popup.success .popup-icon { background: #ecfdf5; color: #10b981; }
   .settings-popup.error .popup-icon { background: #fef2f2; color: #ef4444; }
+  .settings-popup.confirm .popup-icon { background: #eff6ff; color: #4f46e5; }
   .settings-popup h3 { margin-bottom: 8px; font-size: 20px; color: #111827; }
   .settings-popup p { color: #6b7280; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
   .popup-close-btn { width: 100%; padding: 12px; border-radius: 12px; border: none; background: #1f2937; color: white; font-weight: 600; cursor: pointer; transition: background 0.2s; }
   .popup-close-btn:hover { background: #111827; }
   </style>
   <script>
-  function showPopup(msg, type) {
+  function showPopup(msg, type, callback) {
       var overlay = document.createElement('div');
       overlay.className = 'settings-modal-overlay';
       var modal = document.createElement('div');
       modal.className = 'settings-popup ' + type;
-      var icon = (type === 'success') ? '✓' : '⚠';
-      var title = (type === 'success') ? 'Success!' : 'Error';
-      modal.innerHTML = '<div class="popup-icon">' + icon + '</div><h3>' + title + '</h3><p>' + msg + '</p><button class="popup-close-btn" type="button">Dismiss</button>';
-      document.body.appendChild(overlay);
-      overlay.appendChild(modal);
-      setTimeout(function() { overlay.classList.add('show'); }, 10);
-      modal.querySelector('.popup-close-btn').onclick = function() {
-          overlay.classList.remove('show');
-          setTimeout(function() { overlay.remove(); }, 300);
-      };
+      
+      if (type === 'confirm') {
+          var icon = '?';
+          var title = 'Confirm';
+          modal.innerHTML = '<div class="popup-icon">' + icon + '</div><h3>' + title + '</h3><p>' + msg + '</p><div style="display:flex;gap:10px;justify-content:center;"><button class="popup-close-btn" type="button" style="background:#6b7280;">Cancel</button><button class="popup-close-btn" type="button" style="background:#4f46e5;">Confirm</button></div>';
+          document.body.appendChild(overlay);
+          overlay.appendChild(modal);
+          setTimeout(function() { overlay.classList.add('show'); }, 10);
+          
+          var buttons = modal.querySelectorAll('.popup-close-btn');
+          buttons[0].onclick = function() {
+              overlay.classList.remove('show');
+              setTimeout(function() { overlay.remove(); }, 300);
+          };
+          buttons[1].onclick = function() {
+              overlay.classList.remove('show');
+              setTimeout(function() { 
+                  overlay.remove();
+                  if (callback) callback();
+              }, 300);
+          };
+      } else {
+          var icon = (type === 'success') ? '✓' : '⚠';
+          var title = (type === 'success') ? 'Success!' : 'Error';
+          modal.innerHTML = '<div class="popup-icon">' + icon + '</div><h3>' + title + '</h3><p>' + msg + '</p><button class="popup-close-btn" type="button">Dismiss</button>';
+          document.body.appendChild(overlay);
+          overlay.appendChild(modal);
+          setTimeout(function() { overlay.classList.add('show'); }, 10);
+          modal.querySelector('.popup-close-btn').onclick = function() {
+              overlay.classList.remove('show');
+              setTimeout(function() { overlay.remove(); }, 300);
+          };
+      }
   }
   function switchTab(btn, tabId) {
       var tabs = document.querySelectorAll('.stab');
@@ -467,29 +491,30 @@ function testEmailConnection(button) {
 }
 
 function triggerManualBackup(button) {
-    if (!confirm('Create a database backup now? This may take a moment.')) return;
-    button.disabled = true;
-    button.textContent = 'Creating backup...';
-    fetch('../actions/saveSettings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'form_type=manual_backup'
-    })
-    .then(response => response.json())
-    .then(data => {
-        button.disabled = false;
-        button.textContent = 'Create Backup Now';
-        if (data.success) {
-            showPopup('Backup created successfully!', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showPopup(data.message || 'Backup failed. Please try again.', 'error');
-        }
-    })
-    .catch(error => {
-        button.disabled = false;
-        button.textContent = 'Create Backup Now';
-        showPopup('Backup error: ' + error.message, 'error');
+    showPopup('Create a database backup now? This may take a moment.', 'confirm', () => {
+        button.disabled = true;
+        button.textContent = 'Creating backup...';
+        fetch('../actions/saveSettings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'form_type=manual_backup'
+        })
+        .then(response => response.json())
+        .then(data => {
+            button.disabled = false;
+            button.textContent = 'Create Backup Now';
+            if (data.success) {
+                showPopup('Backup created successfully!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showPopup(data.message || 'Backup failed. Please try again.', 'error');
+            }
+        })
+        .catch(error => {
+            button.disabled = false;
+            button.textContent = 'Create Backup Now';
+            showPopup('Backup error: ' + error.message, 'error');
+        });
     });
 }
 
@@ -552,20 +577,23 @@ function updatePaginationControls(pagination) {
 function exportAuditLogs() { window.location.href = '../actions/exportAuditLogs.php'; }
 
 function clearOldLogs() {
-    if (!confirm('Clear audit logs older than 90 days? This cannot be undone.')) return;
-    fetch('../actions/saveSettings.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'form_type=clear_old_logs'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showPopup('Old logs cleared successfully!', 'success');
-            loadAuditLogs();
-        } else {
-            showPopup(data.message || 'Failed to clear logs.', 'error');
-        }
+    showPopup('Clear audit logs older than 90 days? This cannot be undone.', 'confirm', () => {
+        fetch('../actions/saveSettings.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'form_type=clear_old_logs'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showPopup('Old logs cleared successfully!', 'success');
+            } else {
+                showPopup(data.message || 'Failed to clear logs.', 'error');
+            }
+        })
+        .catch(error => {
+            showPopup('Error clearing logs: ' + error.message, 'error');
+        });
     });
 }
 

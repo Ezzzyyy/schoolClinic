@@ -257,7 +257,7 @@ try {
     $sql = "SELECT n.notification_id, n.category, n.title, n.message, n.link_url, n.is_read, n.created_at
             FROM notifications n
             WHERE {$where}
-            ORDER BY n.created_at DESC
+            ORDER BY n.is_read ASC, n.created_at DESC
             LIMIT :limit";
 
     $stmt = $conn->prepare($sql);

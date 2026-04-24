@@ -23,6 +23,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $db = new Database();
 $conn = $db->connect();
 
+function ensureAuditLogsTable(PDO $conn): void
+{
+    $tableCheck = $conn->query("SHOW TABLES LIKE 'audit_logs'");
+    if (!$tableCheck || !$tableCheck->fetch()) {
+        $conn->exec("CREATE TABLE audit_logs (
+            log_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            action VARCHAR(100) NOT NULL,
+            entity_type VARCHAR(50),
+            entity_id INT,
+            description TEXT,
+            ip_address VARCHAR(45),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )");
+    }
+}
+
 // Ensure audit logs table exists
 ensureAuditLogsTable($conn);
 

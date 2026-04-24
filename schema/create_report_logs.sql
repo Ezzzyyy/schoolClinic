@@ -1,3 +1,8 @@
+-- ============================================================
+-- CREATE: report_logs table
+-- Run this ONCE against your school clinic database.
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS report_logs (
     log_id INT AUTO_INCREMENT PRIMARY KEY,
     report_type VARCHAR(100) NOT NULL,

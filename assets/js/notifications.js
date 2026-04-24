@@ -1,4 +1,7 @@
+console.log('notifications.js loaded');
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded fired in notifications.js');
     const notifBtn = document.querySelector('.notif-btn');
     const notifDropdown = document.getElementById('notificationDropdown');
     const notifList = document.getElementById('notifDropdownList');
@@ -6,7 +9,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const markAllBtn = document.getElementById('markAllDropdownReadBtn');
     const notifDot = document.querySelector('.notif-dot');
 
-    if (!notifBtn || !notifDropdown || !notifList) return;
+    console.log('Notification elements:', { notifBtn, notifDropdown, notifList });
+
+    if (!notifBtn || !notifDropdown || !notifList) {
+        console.error('Notification elements not found');
+        return;
+    }
 
     const iconMap = {
         inventory: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7h14l1.5 5v6H1.5v-6L3 7z"/><path d="M7 7V5a3 3 0 0 1 6 0v2"/><path d="M10 12v2"/></svg>',
@@ -99,9 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     notifBtn.addEventListener('click', async (e) => {
+        console.log('Notification button clicked');
         e.stopPropagation();
         const opening = !notifDropdown.classList.contains('is-open');
         notifDropdown.classList.toggle('is-open');
+        console.log('Dropdown is-open:', notifDropdown.classList.contains('is-open'));
         if (opening) {
             await loadNotifications();
         }
