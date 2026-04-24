@@ -48,7 +48,25 @@ class Settings extends BaseModel {
      * Get all users for the settings table.
      */
     public function getUsers(): array {
-        $query = "SELECT user_id, first_name, last_name, email, role, last_login, status FROM users ORDER BY last_name ASC";
+        $hasLastLogin = false;
+        $hasStatus = false;
+
+        $colStmt = $this->db->query("SHOW COLUMNS FROM users");
+        if ($colStmt) {
+            foreach ($colStmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
+                if (($col['Field'] ?? '') === 'last_login') {
+                    $hasLastLogin = true;
+                }
+                if (($col['Field'] ?? '') === 'status') {
+                    $hasStatus = true;
+                }
+            }
+        }
+
+        $lastLoginExpr = $hasLastLogin ? 'last_login' : 'NULL AS last_login';
+        $statusExpr = $hasStatus ? 'status' : "'Active' AS status";
+
+        $query = "SELECT user_id, first_name, last_name, email, role, {$lastLoginExpr}, {$statusExpr} FROM users ORDER BY last_name ASC";
         return $this->db->query($query)->fetchAll(PDO::FETCH_ASSOC);
     }
 }

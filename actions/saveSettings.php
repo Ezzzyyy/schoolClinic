@@ -44,12 +44,22 @@ if ($formType === 'clinic_setup') {
         $dataToSave[$k] = $_POST[$k] ?? 'optional';
         $dataToSave[$k . '_enabled'] = isset($_POST[$k . '_enabled']) ? '1' : '0';
     }
-} elseif ($formType === 'system_setup') {
+} elseif ($formType === 'system_setup' || $formType === 'system_settings') {
     $dataToSave = [
+        'email_enabled'       => isset($_POST['email_enabled']) ? '1' : '0',
+        'email_username'      => $_POST['email_username'] ?? '',
+        'email_from_address'  => $_POST['email_from_address'] ?? '',
+        'email_from_name'     => $_POST['email_from_name'] ?? '',
         'session_timeout'     => $_POST['session_timeout'] ?? '60',
         'max_login_attempts'  => $_POST['max_login_attempts'] ?? '5',
-        'two_factor_auth'     => isset($_POST['two_factor_auth']) ? 'enabled' : 'disabled'
+        'two_factor_auth'     => isset($_POST['two_factor_auth']) ? 'enabled' : 'disabled',
+        'data_retention_days' => $_POST['data_retention_days'] ?? '365',
+        'backup_enabled'      => isset($_POST['backup_enabled']) ? '1' : '0'
     ];
+
+    if (!empty($_POST['email_password'])) {
+        $dataToSave['email_password'] = $_POST['email_password'];
+    }
 } elseif ($formType === 'email_config') {
     $dataToSave = [
         'email_enabled'       => isset($_POST['email_enabled']) ? '1' : '0',
@@ -114,7 +124,7 @@ if ($formType === 'clinic_setup') {
     
     if ($returnVar === 0 && file_exists($backupFile)) {
         // Update last backup date
-        $settingsModel->save('last_backup_date', date('Y-m-d H:i:s'));
+        $settingsModel->saveMultiple(['last_backup_date' => date('Y-m-d H:i:s')]);
         echo json_encode(['success' => true, 'message' => 'Backup created successfully!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Failed to create backup. Make sure mysqldump is installed.']);

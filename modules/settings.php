@@ -11,6 +11,22 @@ $db = new Database();
 $conn = $db->connect();
 $settingsModel = new Settings($conn);
 $config = $settingsModel->getAll();
+$allowedTabs = ['clinic', 'requirements', 'users', 'system', 'audit'];
+$initialTab = $_GET['tab'] ?? 'clinic';
+if (!in_array($initialTab, $allowedTabs, true)) {
+  $initialTab = 'clinic';
+}
+
+// Get available roles from schema
+$availableRoles = ['nurse', 'doctor'];
+$roleColumn = $conn->query("SHOW COLUMNS FROM users LIKE 'role'")->fetch(PDO::FETCH_ASSOC);
+if ($roleColumn) {
+  $type = (string)($roleColumn['Type'] ?? '');
+  if (preg_match('/^enum\((.*)\)$/i', $type, $matches)) {
+    $enumVals = str_getcsv($matches[1], ',', "'");
+    $availableRoles = array_map('strtolower', array_map('trim', $enumVals));
+  }
+}
 
 $pageTitle = 'Settings';
 $activeModule = 'settings';
@@ -71,11 +87,11 @@ $activeModule = 'settings';
     <?php include __DIR__ . '/../includes/header.php'; ?>
     <div class="dashboard-body settings-page">
       <div class="settings-tabs">
-        <button class="stab active" onclick="switchTab(this, 'clinic')">Clinic Setup</button>
-        <button class="stab" onclick="switchTab(this, 'requirements')">Assessment Requirements</button>
-        <button class="stab" onclick="switchTab(this, 'users')">User Access</button>
-        <button class="stab" onclick="switchTab(this, 'system')">System</button>
-        <button class="stab" onclick="switchTab(this, 'audit')">Audit Logs</button>
+        <button class="stab active" data-tab="clinic" onclick="switchTab(this, 'clinic')">Clinic Setup</button>
+        <button class="stab" data-tab="requirements" onclick="switchTab(this, 'requirements')">Assessment Requirements</button>
+        <button class="stab" data-tab="users" onclick="switchTab(this, 'users')">User Access</button>
+        <button class="stab" data-tab="system" onclick="switchTab(this, 'system')">System</button>
+        <button class="stab" data-tab="audit" onclick="switchTab(this, 'audit')">Audit Logs</button>
       </div>
 
       <div class="stab-content active" id="tab-clinic">
@@ -156,7 +172,7 @@ $activeModule = 'settings';
         <div class="card settings-card">
           <div class="card-header">
             <div class="card-title">Clinic Staff Accounts</div>
-            <button class="settings-btn small" type="button" onclick="location.href='userRecords.php'">Manage Users</button>
+            <button class="settings-btn small" type="button" onclick="openAddUserModal()">Manage Users</button>
           </div>
           <div class="module-table-wrap">
             <table class="module-table settings-table">
@@ -164,8 +180,24 @@ $activeModule = 'settings';
               <tbody>
                 <?php
                 $staff = $settingsModel->getUsers();
+                if (empty($staff)):
+                ?>
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 28px; color: #6b7280;">No staff accounts found.</td>
+                </tr>
+                <?php
+                else:
                 foreach ($staff as $u):
-                    $roleLabel = ($u['role'] == 1) ? 'Admin' : (($u['role'] == 2) ? 'Nurse' : 'Assistant');
+                  $roleRaw = strtolower((string)($u['role'] ?? ''));
+                  if ($roleRaw === '1' || $roleRaw === 'admin') {
+                    $roleLabel = 'Admin';
+                  } elseif ($roleRaw === '2' || $roleRaw === 'nurse') {
+                    $roleLabel = 'Nurse';
+                  } elseif ($roleRaw === 'doctor') {
+                    $roleLabel = 'Doctor';
+                  } else {
+                    $roleLabel = ucfirst((string)($u['role'] ?? 'Assistant'));
+                  }
                     $lastLogin = $u['last_login'] ? date('M d, H:i A', strtotime($u['last_login'])) : 'Never';
                 ?>
                 <tr>
@@ -177,11 +209,96 @@ $activeModule = 'settings';
                     <?php $stat = strtolower($u['status']); ?>
                     <span class="status-pill <?= ($stat === 'active') ? 'ok' : (($stat === 'inactive') ? 'neutral' : 'warn') ?>"><?= e($u['status']) ?></span>
                   </td>
-                  <td class="row-actions"><button class="row-action-btn secondary" type="button">Edit</button></td>
+                  <td class="row-actions">
+                    <button
+                      class="row-action-btn secondary"
+                      type="button"
+                      onclick="openUserEditModal(this)"
+                      data-user-id="<?= (int)($u['user_id'] ?? 0) ?>"
+                      data-user-name="<?= e(trim((string)($u['first_name'] ?? '') . ' ' . (string)($u['last_name'] ?? '')) ?: 'User') ?>"
+                      data-role="<?= e((string)($u['role'] ?? '')) ?>"
+                      data-status="<?= e((string)($u['status'] ?? 'active')) ?>"
+                    >Edit</button>
+                  </td>
                 </tr>
-                <?php endforeach; ?>
+                <?php endforeach; endif; ?>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <div id="userEditModal" class="settings-modal-overlay" aria-hidden="true" style="display:none;">
+          <div class="settings-popup" role="dialog" aria-modal="true" aria-labelledby="userEditModalTitle" style="max-width:420px; text-align:left;">
+            <h3 id="userEditModalTitle" style="margin:0 0 8px 0; font-size:20px; color:#111827;">Edit User Access</h3>
+            <p id="userEditModalName" style="margin:0 0 18px 0; color:#6b7280; font-size:14px;"></p>
+            <form action="../actions/updateUserAccess.php" method="POST" id="userEditForm">
+              <input type="hidden" name="user_id" id="editUserId" value="" />
+              <div style="display:grid; gap:14px;">
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Role</span>
+                  <select name="role" id="editUserRole">
+                    <?php foreach ($availableRoles as $r): ?>
+                    <option value="<?= e($r) ?>"><?= ucfirst(e($r)) ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </label>
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Status</span>
+                  <select name="status" id="editUserStatus">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="pending review">Pending review</option>
+                  </select>
+                </label>
+              </div>
+              <div class="settings-foot" style="margin-top:18px;">
+                <button class="settings-btn" type="submit">Save User</button>
+                <button class="settings-btn secondary" type="button" onclick="closeUserEditModal()">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="addUserModal" class="settings-modal-overlay" aria-hidden="true" style="display:none;">
+          <div class="settings-popup" role="dialog" aria-modal="true" aria-labelledby="addUserModalTitle" style="max-width:420px; text-align:left;">
+            <h3 id="addUserModalTitle" style="margin:0 0 8px 0; font-size:20px; color:#111827;">Add New User</h3>
+            <p style="margin:0 0 18px 0; color:#6b7280; font-size:14px;">Create a new clinic staff account</p>
+            <form action="../actions/createUser.php" method="POST" id="addUserForm">
+              <div style="display:grid; gap:14px;">
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">First Name</span>
+                  <input type="text" name="first_name" placeholder="First name" required style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px;" />
+                </label>
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Last Name</span>
+                  <input type="text" name="last_name" placeholder="Last name" required style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px;" />
+                </label>
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Email</span>
+                  <input type="email" name="email" placeholder="email@example.com" required style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px;" />
+                </label>
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Username</span>
+                  <input type="text" name="username" placeholder="username" required style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px;" />
+                </label>
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Password</span>
+                  <input type="password" name="password" placeholder="Temporary password" required style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px;" />
+                </label>
+                <label class="sf-field" style="display:block;">
+                  <span style="display:block; margin-bottom:6px;">Role</span>
+                  <select name="role" required style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px;">
+                    <?php foreach ($availableRoles as $r): ?>
+                    <option value="<?= e($r) ?>"><?= ucfirst(e($r)) ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </label>
+              </div>
+              <div class="settings-foot" style="margin-top:18px;">
+                <button class="settings-btn" type="submit">Create User</button>
+                <button class="settings-btn secondary" type="button" onclick="closeAddUserModal()">Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -308,10 +425,16 @@ document.addEventListener('DOMContentLoaded', function() {
         showPopup(<?= json_encode($_SESSION['msg']) ?>, <?= json_encode($_SESSION['msg_type'] ?? 'success') ?>);
         <?php unset($_SESSION['msg'], $_SESSION['msg_type']); ?>
     <?php endif; ?>
+
+  var initialTab = <?= json_encode($initialTab) ?>;
+  if (initialTab && initialTab !== 'clinic') {
+    var tabBtn = document.querySelector('.settings-tabs .stab[data-tab="' + initialTab + '"]');
+    if (tabBtn) switchTab(tabBtn, initialTab);
+  }
 });
 
 function testEmailConnection(button) {
-    var form = document.getElementById('emailConfigForm');
+  var form = document.getElementById('systemSettingsForm');
     if (!form) return;
     var formData = new FormData(form);
     formData.set('form_type', 'test_email');
@@ -399,6 +522,45 @@ function clearOldLogs() {
             showPopup(data.message || 'Failed to clear logs.', 'error');
         }
     });
+}
+
+function openUserEditModal(button) {
+    var modal = document.getElementById('userEditModal');
+    var userId = document.getElementById('editUserId');
+    var userName = document.getElementById('userEditModalName');
+    var userRole = document.getElementById('editUserRole');
+    var userStatus = document.getElementById('editUserStatus');
+    if (!modal || !userId || !userName || !userRole || !userStatus) return;
+
+    userId.value = button.getAttribute('data-user-id') || '';
+    userName.textContent = button.getAttribute('data-user-name') || 'User';
+    userRole.value = (button.getAttribute('data-role') || 'nurse').toLowerCase();
+    userStatus.value = (button.getAttribute('data-status') || 'active').toLowerCase();
+
+    modal.style.display = 'flex';
+    setTimeout(function() { modal.classList.add('show'); }, 10);
+}
+
+function closeUserEditModal() {
+    var modal = document.getElementById('userEditModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    setTimeout(function() { modal.style.display = 'none'; }, 220);
+}
+
+function openAddUserModal() {
+    var modal = document.getElementById('addUserModal');
+    if (!modal) return;
+    document.getElementById('addUserForm').reset();
+    modal.style.display = 'flex';
+    setTimeout(function() { modal.classList.add('show'); }, 10);
+}
+
+function closeAddUserModal() {
+    var modal = document.getElementById('addUserModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    setTimeout(function() { modal.style.display = 'none'; }, 220);
 }
 
 window.addEventListener('load', function() {
