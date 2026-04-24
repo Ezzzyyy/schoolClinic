@@ -1,0 +1,425 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../classes/Settings.php';
+
+protectPage(1);
+
+$db = new Database();
+$conn = $db->connect();
+$settingsModel = new Settings($conn);
+$config = $settingsModel->getAll();
+
+$pageTitle = 'Settings';
+$activeModule = 'settings';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><?= htmlspecialchars($pageTitle) ?> - ClinIQ</title>
+  <link rel="stylesheet" href="../assets/css/dashboard.css" />
+  <link rel="stylesheet" href="../assets/css/settings.css" />
+  <style>
+  .settings-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+  .settings-modal-overlay.show { opacity: 1; pointer-events: auto; }
+  .settings-popup { background: white; width: 100%; max-width: 340px; padding: 32px; border-radius: 24px; text-align: center; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+  .settings-modal-overlay.show .settings-popup { transform: scale(1); }
+  .popup-icon { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; font-weight: bold; }
+  .settings-popup.success .popup-icon { background: #ecfdf5; color: #10b981; }
+  .settings-popup.error .popup-icon { background: #fef2f2; color: #ef4444; }
+  .settings-popup h3 { margin-bottom: 8px; font-size: 20px; color: #111827; }
+  .settings-popup p { color: #6b7280; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  .popup-close-btn { width: 100%; padding: 12px; border-radius: 12px; border: none; background: #1f2937; color: white; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .popup-close-btn:hover { background: #111827; }
+  </style>
+  <script>
+  function showPopup(msg, type) {
+      var overlay = document.createElement('div');
+      overlay.className = 'settings-modal-overlay';
+      var modal = document.createElement('div');
+      modal.className = 'settings-popup ' + type;
+      var icon = (type === 'success') ? '✓' : '⚠';
+      var title = (type === 'success') ? 'Success!' : 'Error';
+      modal.innerHTML = '<div class="popup-icon">' + icon + '</div><h3>' + title + '</h3><p>' + msg + '</p><button class="popup-close-btn" type="button">Dismiss</button>';
+      document.body.appendChild(overlay);
+      overlay.appendChild(modal);
+      setTimeout(function() { overlay.classList.add('show'); }, 10);
+      modal.querySelector('.popup-close-btn').onclick = function() {
+          overlay.classList.remove('show');
+          setTimeout(function() { overlay.remove(); }, 300);
+      };
+  }
+  function switchTab(btn, tabId) {
+      var tabs = document.querySelectorAll('.stab');
+      var contents = document.querySelectorAll('.stab-content');
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+      for (var j = 0; j < contents.length; j++) contents[j].classList.remove('active');
+      btn.classList.add('active');
+      var target = document.getElementById('tab-' + tabId);
+      if (target) target.classList.add('active');
+  }
+  </script>
+</head>
+<body>
+<div class="app-shell">
+  <?php include __DIR__ . '/../includes/sidebar.php'; ?>
+  <div class="main-content">
+    <?php include __DIR__ . '/../includes/header.php'; ?>
+    <div class="dashboard-body settings-page">
+      <div class="settings-tabs">
+        <button class="stab active" onclick="switchTab(this, 'clinic')">Clinic Setup</button>
+        <button class="stab" onclick="switchTab(this, 'requirements')">Assessment Requirements</button>
+        <button class="stab" onclick="switchTab(this, 'users')">User Access</button>
+        <button class="stab" onclick="switchTab(this, 'system')">System</button>
+        <button class="stab" onclick="switchTab(this, 'audit')">Audit Logs</button>
+      </div>
+
+      <div class="stab-content active" id="tab-clinic">
+        <form class="settings-layout" action="../actions/saveSettings.php" method="POST" id="clinicSetupForm">
+          <input type="hidden" name="form_type" value="clinic_setup" />
+          <section class="card settings-card">
+            <div class="card-header"><div class="card-title">Clinic Identity</div></div>
+            <div class="settings-form-grid">
+              <label class="sf-field full"><span>Clinic / School Name</span><input type="text" name="clinic_name" value="<?= e($config['clinic_name'] ?? '') ?>" /></label>
+              <label class="sf-field"><span>School Year</span><input type="text" name="school_year" value="<?= e($config['school_year'] ?? '') ?>" /></label>
+              <label class="sf-field"><span>Clinic Contact Number</span><input type="tel" name="clinic_contact" value="<?= e($config['clinic_contact'] ?? '') ?>" /></label>
+              <label class="sf-field full"><span>Clinic Address</span><input type="text" name="clinic_address" value="<?= e($config['clinic_address'] ?? '') ?>" /></label>
+              <label class="sf-field full"><span>Document Footer Text</span><textarea name="document_footer" rows="2"><?= e($config['document_footer'] ?? '') ?></textarea></label>
+            </div>
+          </section>
+          <section class="card settings-card">
+            <div class="card-header"><div class="card-title">Signatories</div></div>
+            <div class="settings-form-grid">
+              <label class="sf-field"><span>Primary Physician</span><input type="text" name="primary_physician" value="<?= e($config['primary_physician'] ?? '') ?>" /></label>
+              <label class="sf-field"><span>License No.</span><input type="text" name="physician_license" value="<?= e($config['physician_license'] ?? '') ?>" /></label>
+              <label class="sf-field"><span>Head Nurse</span><input type="text" name="head_nurse" value="<?= e($config['head_nurse'] ?? '') ?>" /></label>
+              <label class="sf-field"><span>License No.</span><input type="text" name="nurse_license" value="<?= e($config['nurse_license'] ?? '') ?>" /></label>
+            </div>
+            <div class="settings-foot">
+              <button class="settings-btn" type="submit">Save Changes</button>
+            </div>
+          </section>
+        </form>
+      </div>
+
+      <div class="stab-content" id="tab-requirements">
+        <form class="card settings-card" action="../actions/saveSettings.php" method="POST">
+          <input type="hidden" name="form_type" value="assessment_reqs" />
+          <div class="card-header">
+            <div class="card-title">Health Submission Requirements</div>
+            <span class="card-link">Applied globally to all student submissions</span>
+          </div>
+          <p class="settings-desc">Toggle which documents students are required to upload when submitting health requirements. Changes take effect immediately for new submissions.</p>
+          <div class="req-toggle-list">
+            <?php
+            $reqs = [
+                ['key' => 'req_xray', 'label' => 'Chest X-ray', 'desc' => 'PA view, taken within the last 6 months'],
+                ['key' => 'req_urinalysis', 'label' => 'Urinalysis', 'desc' => 'Complete urinalysis, within last 3 months'],
+                ['key' => 'req_cbc', 'label' => 'Hematology / CBC', 'desc' => 'Complete blood count, within last 3 months'],
+                ['key' => 'req_drug_test', 'label' => 'Drug Test', 'desc' => 'Standard 5-panel, certified testing center'],
+                ['key' => 'req_med_cert', 'label' => 'Medical Certificate', 'desc' => 'Signed by a licensed physician'],
+                ['key' => 'req_vaccination', 'label' => 'Vaccination Card', 'desc' => 'Latest immunization record']
+            ];
+            foreach ($reqs as $r):
+                $isReq = ($config[$r['key']] ?? 'optional') === 'required';
+                $isEnabled = ($config[$r['key'] . '_enabled'] ?? '1') === '1';
+            ?>
+            <div class="rtog-item">
+              <div class="rtog-info">
+                <strong><?= $r['label'] ?></strong>
+                <span><?= $r['desc'] ?></span>
+              </div>
+              <div class="rtog-controls">
+                <select class="rtog-select" name="<?= $r['key'] ?>">
+                  <option value="required" <?= $isReq ? 'selected' : '' ?>>Required</option>
+                  <option value="optional" <?= !$isReq ? 'selected' : '' ?>>Optional</option>
+                </select>
+                <label class="toggle-switch">
+                  <input type="checkbox" name="<?= $r['key'] ?>_enabled" value="1" <?= $isEnabled ? 'checked' : '' ?> />
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+            </div>
+            <?php endforeach; ?>
+          </div>
+          <div class="settings-foot">
+            <button class="settings-btn" type="submit">Save Requirements</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="stab-content" id="tab-users">
+        <div class="card settings-card">
+          <div class="card-header">
+            <div class="card-title">Clinic Staff Accounts</div>
+            <button class="settings-btn small" type="button" onclick="location.href='userRecords.php'">Manage Users</button>
+          </div>
+          <div class="module-table-wrap">
+            <table class="module-table settings-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                <?php
+                $staff = $settingsModel->getUsers();
+                foreach ($staff as $u):
+                    $roleLabel = ($u['role'] == 1) ? 'Admin' : (($u['role'] == 2) ? 'Nurse' : 'Assistant');
+                    $lastLogin = $u['last_login'] ? date('M d, H:i A', strtotime($u['last_login'])) : 'Never';
+                ?>
+                <tr>
+                  <td><strong><?= e($u['first_name'] . ' ' . $u['last_name']) ?></strong></td>
+                  <td class="mono" style="font-size:11.5px;"><?= e($u['email']) ?></td>
+                  <td><?= $roleLabel ?></td>
+                  <td><?= $lastLogin ?></td>
+                  <td>
+                    <?php $stat = strtolower($u['status']); ?>
+                    <span class="status-pill <?= ($stat === 'active') ? 'ok' : (($stat === 'inactive') ? 'neutral' : 'warn') ?>"><?= e($u['status']) ?></span>
+                  </td>
+                  <td class="row-actions"><button class="row-action-btn secondary" type="button">Edit</button></td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="stab-content" id="tab-system">
+        <form class="settings-layout" action="../actions/saveSettings.php" method="POST" id="systemSettingsForm">
+          <input type="hidden" name="form_type" value="system_settings" />
+          <section class="card settings-card">
+            <div class="card-header"><div class="card-title">Email Notifications</div></div>
+            <div class="settings-form-grid">
+              <label class="sf-field full"><span>Enable Email Notifications</span>
+                <div class="settings-toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="email_enabled" value="1" <?= ($config['email_enabled'] ?? '0') === '1' ? 'checked' : '' ?> />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="settings-toggle-hint">Allow system to send notification emails</span>
+                </div>
+              </label>
+              <label class="sf-field"><span>Email Username</span><input type="email" name="email_username" value="<?= e($config['email_username'] ?? '') ?>" placeholder="your_email@gmail.com" /></label>
+              <label class="sf-field"><span>Email Password</span><input type="password" name="email_password" value="" placeholder="App password (not regular password)" /></label>
+              <label class="sf-field full"><span>From Email Address</span><input type="email" name="email_from_address" value="<?= e($config['email_from_address'] ?? '') ?>" placeholder="clinic@school.edu.ph" /></label>
+              <label class="sf-field full"><span>From Name</span><input type="text" name="email_from_name" value="<?= e($config['email_from_name'] ?? '') ?>" placeholder="ClinIQ School Clinic" /></label>
+            </div>
+            <div class="settings-foot">
+              <button class="settings-btn" type="submit">Save Email Settings</button>
+              <button class="settings-btn secondary" type="button" onclick="testEmailConnection(this)">Test Connection</button>
+            </div>
+          </section>
+          <section class="card settings-card">
+            <div class="card-header"><div class="card-title">Session &amp; Security</div></div>
+            <div class="settings-form-grid">
+              <label class="sf-field"><span>Session Timeout</span>
+                <select name="session_timeout">
+                  <option value="30" <?= ($config['session_timeout'] ?? '60') == '30' ? 'selected' : '' ?>>30 minutes</option>
+                  <option value="60" <?= ($config['session_timeout'] ?? '60') == '60' ? 'selected' : '' ?>>60 minutes</option>
+                  <option value="120" <?= ($config['session_timeout'] ?? '60') == '120' ? 'selected' : '' ?>>120 minutes</option>
+                </select>
+              </label>
+              <label class="sf-field"><span>Max Login Attempts</span><input type="number" name="max_login_attempts" value="<?= e($config['max_login_attempts'] ?? '5') ?>" min="1" max="10" /></label>
+              <label class="sf-field full"><span>2-Factor Auth</span>
+                <div class="settings-toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="two_factor_auth" value="enabled" <?= ($config['two_factor_auth'] ?? 'disabled') === 'enabled' ? 'checked' : '' ?> />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="settings-toggle-hint">Enable to require OTP on each login</span>
+                </div>
+              </label>
+            </div>
+            <div class="settings-foot"><button class="settings-btn" type="submit">Save Security Settings</button></div>
+          </section>
+          <section class="card settings-card">
+            <div class="card-header"><div class="card-title">Database &amp; Backup</div></div>
+            <div class="sys-info-list">
+              <div class="sys-info-row"><span>Last Backup</span><strong><?= e($config['last_backup_date'] ?? 'Never') ?></strong></div>
+              <div class="sys-info-row"><span>Data Retention Period</span><strong><?= e($config['data_retention_days'] ?? '365') ?> days</strong></div>
+              <div class="sys-info-row"><span>App Version</span><strong>ClinIQ v1.0.0</strong></div>
+            </div>
+            <div class="settings-form-grid">
+              <label class="sf-field full"><span>Auto Backup</span>
+                <div class="settings-toggle-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="backup_enabled" value="1" <?= ($config['backup_enabled'] ?? '1') === '1' ? 'checked' : '' ?> />
+                    <span class="toggle-track"></span>
+                  </label>
+                  <span class="settings-toggle-hint">Enable automatic daily backups at midnight</span>
+                </div>
+              </label>
+              <label class="sf-field"><span>Data Retention (days)</span>
+                <input type="number" name="data_retention_days" value="<?= e($config['data_retention_days'] ?? '365') ?>" min="30" max="3650" />
+                <span style="font-size:12px; color:#6b7280;">Automatically archive records older than this period</span>
+              </label>
+            </div>
+            <div class="settings-foot">
+              <button class="settings-btn" type="submit">Save Backup Settings</button>
+              <button class="settings-btn secondary" type="button" onclick="triggerManualBackup(this)">Create Backup Now</button>
+            </div>
+          </section>
+        </form>
+      </div>
+
+      <div class="stab-content" id="tab-audit">
+        <div class="card settings-card">
+          <div class="card-header">
+            <div class="card-title">System Audit Logs</div>
+            <span class="card-link">All user actions and system events</span>
+          </div>
+          <p class="settings-desc">View activity logs of all users in the system. This log tracks login attempts, data modifications, and important system actions for compliance and security purposes.</p>
+          <div class="audit-filters">
+            <input type="text" placeholder="Search logs..." id="auditSearch" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; width: 200px;" />
+            <select id="auditFilter" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;">
+              <option value="">All Actions</option>
+              <option value="login">Login</option>
+              <option value="logout">Logout</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+              <option value="export">Export</option>
+            </select>
+          </div>
+          <div class="module-table-wrap">
+            <table class="module-table settings-table">
+              <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>IP Address</th><th>Details</th></tr></thead>
+              <tbody id="auditLogsList">
+                <tr><td colspan="6" style="text-align: center; padding: 40px; color: #9ca3af;">No audit logs found. Logs will appear here as users interact with the system.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="settings-foot">
+            <button class="settings-btn secondary" type="button" onclick="exportAuditLogs()">Export Logs</button>
+            <button class="settings-btn secondary" type="button" onclick="clearOldLogs()">Clear Old Logs</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if (isset($_SESSION['msg'])): ?>
+        showPopup(<?= json_encode($_SESSION['msg']) ?>, <?= json_encode($_SESSION['msg_type'] ?? 'success') ?>);
+        <?php unset($_SESSION['msg'], $_SESSION['msg_type']); ?>
+    <?php endif; ?>
+});
+
+function testEmailConnection(button) {
+    var form = document.getElementById('emailConfigForm');
+    if (!form) return;
+    var formData = new FormData(form);
+    formData.set('form_type', 'test_email');
+    button.disabled = true;
+    button.textContent = 'Testing...';
+    fetch('../actions/saveSettings.php', { method: 'POST', body: formData })
+    .then(response => response.json())
+    .then(data => {
+        button.disabled = false;
+        button.textContent = 'Test Connection';
+        showPopup(data.success ? 'Email configuration is valid!' : (data.message || 'Email test failed. Check your settings.'), data.success ? 'success' : 'error');
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = 'Test Connection';
+        showPopup('Connection test error: ' + error.message, 'error');
+    });
+}
+
+function triggerManualBackup(button) {
+    if (!confirm('Create a database backup now? This may take a moment.')) return;
+    button.disabled = true;
+    button.textContent = 'Creating backup...';
+    fetch('../actions/saveSettings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'form_type=manual_backup'
+    })
+    .then(response => response.json())
+    .then(data => {
+        button.disabled = false;
+        button.textContent = 'Create Backup Now';
+        if (data.success) {
+            showPopup('Backup created successfully!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showPopup(data.message || 'Backup failed. Please try again.', 'error');
+        }
+    })
+    .catch(error => {
+        button.disabled = false;
+        button.textContent = 'Create Backup Now';
+        showPopup('Backup error: ' + error.message, 'error');
+    });
+}
+
+function loadAuditLogs(filter = '', search = '') {
+    fetch('../actions/getAuditLogs.php?filter=' + encodeURIComponent(filter) + '&search=' + encodeURIComponent(search))
+    .then(response => response.json())
+    .then(data => {
+        var tbody = document.getElementById('auditLogsList');
+        if (!tbody) return;
+        if (!data.logs || data.logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #9ca3af;">No logs found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.logs.map(log => `
+            <tr>
+                <td style="font-size: 12px;">${log.timestamp}</td>
+                <td>${log.user_name}</td>
+                <td><span style="background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${log.action}</span></td>
+                <td>${log.entity_type || '—'}</td>
+                <td style="font-size: 12px; color: #6b7280;">${log.ip_address}</td>
+                <td>${log.description || '—'}</td>
+            </tr>
+        `).join('');
+    });
+}
+
+function exportAuditLogs() { window.location.href = '../actions/exportAuditLogs.php'; }
+
+function clearOldLogs() {
+    if (!confirm('Clear audit logs older than 90 days? This cannot be undone.')) return;
+    fetch('../actions/saveSettings.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'form_type=clear_old_logs'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showPopup('Old logs cleared successfully!', 'success');
+            loadAuditLogs();
+        } else {
+            showPopup(data.message || 'Failed to clear logs.', 'error');
+        }
+    });
+}
+
+window.addEventListener('load', function() {
+    if (document.getElementById('auditLogsList')) loadAuditLogs();
+    var auditFilter = document.getElementById('auditFilter');
+    var auditSearch = document.getElementById('auditSearch');
+    var timeout;
+    if (auditFilter) {
+        auditFilter.addEventListener('change', function() {
+            loadAuditLogs(this.value, auditSearch ? auditSearch.value : '');
+        });
+    }
+    if (auditSearch) {
+        auditSearch.addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(function() {
+                loadAuditLogs(auditFilter ? auditFilter.value : '', auditSearch.value);
+            }, 300);
+        });
+    }
+});
+</script>
+</body>
+</html>

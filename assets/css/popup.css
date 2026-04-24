@@ -1,0 +1,89 @@
+.logout-popup-backdrop {
+	position: fixed;
+	inset: 0;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	background: rgba(14, 23, 48, 0.46);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	z-index: 1400;
+}
+
+.logout-popup-backdrop.is-open {
+	display: flex;
+}
+
+.logout-popup {
+	width: min(420px, 100%);
+	border-radius: 16px;
+	border: 1px solid rgba(229, 231, 235, 0.95);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 255, 0.95));
+	box-shadow: 0 24px 46px rgba(15, 23, 42, 0.24);
+	padding: 20px;
+	text-align: center;
+}
+
+.logout-popup-icon {
+	width: 44px;
+	height: 44px;
+	margin: 0 auto 10px;
+	border-radius: 12px;
+	background: #eef1ff;
+	color: #4254d8;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.logout-popup-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.logout-popup h3 {
+	margin: 0;
+	font-size: 1.08rem;
+	color: #1f2d55;
+}
+
+.logout-popup p {
+	margin: 6px 0 0;
+	font-size: 13px;
+	color: #5f6b8a;
+}
+
+.logout-popup-actions {
+	margin-top: 16px;
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+}
+
+.popup-btn {
+	min-height: 38px;
+	border: 0;
+	border-radius: 9px;
+	padding: 0 14px;
+	font: inherit;
+	font-size: 12.5px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.popup-btn.secondary {
+	background: rgba(255, 255, 255, 0.86);
+	color: #1f2d55;
+	border: 1px solid rgba(229, 231, 235, 0.95);
+}
+
+.popup-btn.danger {
+	background: linear-gradient(135deg, #ef4444, #dc2626);
+	color: #fff;
+	box-shadow: 0 10px 20px rgba(220, 38, 38, 0.26);
+}
+
+body.popup-open {
+	overflow: hidden;
+}
